@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- <script src="js/three.min.js"></script> -->
+    <script src="js/three.js"></script>
+    <script src="js/TrackballControls.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/FirstPersonControls.js"></script>
+    <script src="js/FlyControls.js"></script>
+    <script src="js/OBJLoader.js"></script>
+    <script src="js/MTLLoader.js"></script>
+    <script src="js/stats.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+<div id="Stats-Output"></div>
+<div id="WebGL-Output"></div>
+</body>
+<script>
+    // Sets up the scene.
+    function init() {
+        var clock = new THREE.Clock();
+
+        var stats = initStats();
+
+        // Create the scene and set the scene size.
+        var scene = new THREE.Scene();
+
+        // Create a camera, zoom it out from the model a bit, and add it to the scene.
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-50, -50, -50);
+        // // camera.lookAt(new THREE.Vector3(7, , 0));
+        // camera.rotation.x = 2.5;
+        // camera.rotation.y = -0.5;
+        // camera.rotation.z = 2.78;
+        camera.lookAt(0, 0, 0);
+        scene.add(camera);
+
+        var cameraControls = new THREE.TrackballControls(camera);
+
+        // var cameraControls = new THREE.FirstPersonControls(camera);
+        // cameraControls.lookSpeed = 0.1;
+        // cameraControls.movementSpeed = 10;
+        // cameraControls.noFly = true;
+        // cameraControls.lookVertical = true;
+        // cameraControls.constrainVertical = true;
+        // cameraControls.verticalMin = 1.0;
+        // cameraControls.verticalMax = 2.0;
+
+        // var cameraControls = new THREE.FlyControls(camera);
+        // cameraControls.movementSpeed = 10;
+        // cameraControls.domElement = document.querySelector("#WebGL-Output");
+        // cameraControls.rollSpeed = Math.PI / 10;
+        // cameraControls.dragToLook = false;
+
+        // Create a renderer and add it to the DOM.
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(0xffffff, 1.0); // Set the background color of the scene.
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Create an event listener that resizes the renderer with the browser window.
+        window.addEventListener('resize', function () {
+            renderer.setSize(window.innerWidth,  window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // Create a light, set its position, and add it to the scene.
+        var light = new THREE.PointLight(0xffffff);
+        light.position.set(-10, -10, -10);
+        scene.add(light);
+
+        var axes = new THREE.AxesHelper(50);
+        scene.add(axes);
+
+        document.getElementById("WebGL-Output").appendChild(renderer.domElement);
+
+        var path = "models/00/models/";
+
+        var materialLoader = new THREE.MTLLoader();
+        materialLoader.setPath(path);
+        materialLoader.load("output.mtl", function (materials) {
+            materials.preload();
+            materials.side = THREE.DoubleSide;
+            var objLoader = new THREE.OBJLoader();
+            objLoader.setMaterials(materials);
+            objLoader.setPath(path);
+            objLoader.load("output.obj", function (object) {
+                // var position = object.position;
+                // object.position.set(-position);
+                scene.add(object);
+            },
+                // called when loading is in progresses
+                function (xhr) {
+
+                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+
+                },
+                // called when loading has errors
+                function (error) {
+
+                    console.log('An error happened');
+
+                });
+        });
+
+        // Add OrbitControls so that we can pan around with the mouse.
+        // controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        render();
+
+        // Renders the scene and updates the render as needed.
+        function render() {
+            stats.update();
+
+            var delta = clock.getDelta();
+
+            cameraControls.update(delta);
+
+            renderer.clear();
+
+            // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+            requestAnimationFrame(render);
+
+            console.log(camera.rotation);
+
+            // Render the scene.
+            renderer.render(scene, camera);
+        }
+
+        function initStats() {
+            var stats = new Stats();
+            stats.setMode(0); // 0: fps, 1: ms per frame.
+
+            // Align top-left.
+            stats.domElement.style.position = "absolute";
+            stats.domElement.style.left = "0px";
+            stats.domElement.style.top = "0px";
+
+            document.getElementById("Stats-Output").appendChild(stats.domElement);
+
+            return stats;
+        }
+    }
+    window.onload = init;
+</script>
+
+</html>

@@ -16,13 +16,15 @@
         body {
             margin: 0;
             overflow: hidden;
+
+            color: red;
         }
     </style>
 </head>
 
 <body>
     <div id="Stats-Output"></div>
-    <div id="Movement-Selector">
+    <div id="Movement-Selector" onclick="toggleLights()">
         <div id="Selector">
             S1
         </div>
@@ -30,6 +32,8 @@
     <div id="WebGL-Output"></div>
 </body>
 <script>
+    var siteData = new Object();
+
     // Sets up the scene.
     function init() {
         var payloadName = "payload";
@@ -86,6 +90,14 @@
         var pointLight = new THREE.PointLight(0xffffff);
         pointLight.position.set(0, 0, 0);
         scene.add(pointLight);
+        siteData.pointLight = pointLight;
+
+        var sphereLight = new THREE.SphereGeometry(0.5);
+        var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xffec9a});
+        var sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
+        sphereLightMesh.position = pointLight.position;
+        scene.add(sphereLightMesh);
+
         var ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
 
@@ -154,35 +166,6 @@
                 controls.positionX = payload.position.x;
                 controls.positionY = payload.position.y;
                 controls.positionZ = payload.position.z;
-
-                // var newScaleValue = value;
-                // var scaleRatio = newScaleValue / oldScaleValue;
-
-                // var currentPosition = payload.position;
-
-                // var mesh = payload.children[0];
-                // var geometry = mesh.geometry;
-                // var boundingSphere = geometry.boundingSphere;
-                // var center = boundingSphere.center.clone();
-                // var scaledCenterPosition = center.multiplyScalar(newScaleValue);
-
-                // var differenceFromCenter = scaledCenterPosition.sub(currentPosition);
-                // var scaledDifferenceFromCenter = differenceFromCenter.multiplyScalar(scaleRatio);
-
-                // // Changing the scale may change the location of the center.
-
-
-
-                // var radius = boundingSphere.radius;
-                // var desiredRadius = value;
-
-
-                // payload.position.x = -center.x * newScaleValue;
-                // payload.position.y = -center.y * newScaleValue;
-                // payload.position.z = -center.z * newScaleValue;
-                // controls.positionX = payload.position.x;
-                // controls.positionY = payload.position.y;
-                // controls.positionZ = payload.position.z;
             }
         });
 
@@ -250,6 +233,7 @@
         render();
 
         // Renders the scene and updates the render as needed.
+        var step = 0;
         function render() {
             // console.log(scene);
 
@@ -258,8 +242,11 @@
             var delta = clock.getDelta();
 
             cameraControls.update(delta);
+            
+            step += 0.05;
+            pointLight.position.x = 10 * Math.sin(step);
+            sphereLightMesh.position.x = 10 * Math.sin(step);
 
-            renderer.clear();
 
             // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
             requestAnimationFrame(render);
@@ -283,6 +270,16 @@
         }
     }
     window.onload = init;
+
+    function toggleLights() {
+        var pointLight = siteData.pointLight;
+
+        if (pointLight.visible) {
+            pointLight.visible = false;
+        } else {
+            pointLight.visible = true;
+        }
+    }
 </script>
 
 </html>

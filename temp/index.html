@@ -2,15 +2,16 @@
 <html>
 
 <head>
-    <!-- <script src="js/three.min.js"></script> -->
     <script src="js/three.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/dat.gui.min.js"></script>
+    <script src="js/OBJLoader.js"></script>
+    <script src="js/MTLLoader.js"></script>
     <script src="js/TrackballControls.js"></script>
     <script src="js/OrbitControls.js"></script>
     <script src="js/FirstPersonControls.js"></script>
     <script src="js/FlyControls.js"></script>
-    <script src="js/OBJLoader.js"></script>
-    <script src="js/MTLLoader.js"></script>
-    <script src="js/stats.js"></script>
+    <link rel="stylesheet" href="css/style.css" type="text/css">
     <style>
         body {
             margin: 0;
@@ -20,12 +21,20 @@
 </head>
 
 <body>
-<div id="Stats-Output"></div>
-<div id="WebGL-Output"></div>
+    <div id="Stats-Output"></div>
+    <div id="Movement-Selector">
+        <div id="Selector">
+            S1
+        </div>
+    </div>
+    <div id="WebGL-Output"></div>
 </body>
 <script>
     // Sets up the scene.
     function init() {
+        var payloadName = "payload";
+        var desiredInitialRadius = 20;
+
         var clock = new THREE.Clock();
 
         var stats = initStats();
@@ -34,7 +43,7 @@
         var scene = new THREE.Scene();
 
         // Create a camera, zoom it out from the model a bit, and add it to the scene.
-        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
         camera.position.set(-50, -50, -50);
         // // camera.lookAt(new THREE.Vector3(7, , 0));
         // camera.rotation.x = 2.5;
@@ -43,7 +52,20 @@
         camera.lookAt(0, 0, 0);
         scene.add(camera);
 
-        var cameraControls = new THREE.TrackballControls(camera);
+        // Create a renderer and add it to the DOM.
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(0xffffff, 1.0); // Set the background color of the scene.
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById("WebGL-Output").appendChild(renderer.domElement);
+
+        // Create an event listener that resizes the renderer with the browser window.
+        window.addEventListener('resize', function () {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        var cameraControls = new THREE.TrackballControls(camera, renderer.domElement);
 
         // var cameraControls = new THREE.FirstPersonControls(camera);
         // cameraControls.lookSpeed = 0.1;
@@ -60,27 +82,109 @@
         // cameraControls.rollSpeed = Math.PI / 10;
         // cameraControls.dragToLook = false;
 
-        // Create a renderer and add it to the DOM.
-        var renderer = new THREE.WebGLRenderer();
-        renderer.setClearColor(0xffffff, 1.0); // Set the background color of the scene.
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // Create an event listener that resizes the renderer with the browser window.
-        window.addEventListener('resize', function () {
-            renderer.setSize(window.innerWidth,  window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-        });
-
         // Create a light, set its position, and add it to the scene.
-        var light = new THREE.PointLight(0xffffff);
-        light.position.set(-10, -10, -10);
-        scene.add(light);
+        var pointLight = new THREE.PointLight(0xffffff);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+        var ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
 
         var axes = new THREE.AxesHelper(50);
         scene.add(axes);
 
-        document.getElementById("WebGL-Output").appendChild(renderer.domElement);
+        var controls = new function () {
+            this.positionX = 0;
+            this.positionY = 0;
+            this.positionZ = 0;
+            this.scale = 1;
+        };
+
+        var datGui = new dat.GUI();
+        var modelFolder = datGui.addFolder("Model");
+        modelFolder.open();
+        var maxRange = 100;
+        var positionXControl = modelFolder.add(controls, "positionX", -maxRange, maxRange);
+        var positionYControl = modelFolder.add(controls, "positionY", -maxRange, maxRange);
+        var positionZControl = modelFolder.add(controls, "positionZ", -maxRange, maxRange);
+        var scaleControl = modelFolder.add(controls, "scale", 0.1, 50);
+
+        positionXControl.listen();
+        positionXControl.onChange(function (value) {
+            var payload = scene.getObjectByName(payloadName);
+            if (payload !== undefined) {
+                payload.position.x = controls.positionX;
+            };
+        });
+        positionYControl.listen();
+        positionYControl.onChange(function (value) {
+            var payload = scene.getObjectByName(payloadName);
+            if (payload !== undefined) {
+                payload.position.y = controls.positionY;
+            };
+        });
+        positionZControl.listen();
+        positionZControl.onChange(function (value) {
+            var payload = scene.getObjectByName(payloadName);
+            if (payload !== undefined) {
+                payload.position.z = controls.positionZ;
+            };
+        });
+        scaleControl.listen();
+        scaleControl.onChange(function (value) {
+            var payload = scene.getObjectByName(payloadName);
+            if (payload !== undefined) {
+                var mesh = payload.children[0];
+                var geometry = mesh.geometry; // Will be a buffer geometry.
+                var boundingSphere = geometry.boundingSphere;
+                var center = boundingSphere.center;
+
+                var oldScaleVector = payload.scale; // Vector.
+                var oldScaledCenter = center.clone().multiply(oldScaleVector);
+
+                var delta = payload.position.add(oldScaledCenter);
+
+                var newScaleValue = value;
+                var newScaledCenter = center.clone().multiplyScalar(newScaleValue);
+
+                var newPosition = newScaledCenter.clone().negate().add(delta);
+                payload.position.copy(newPosition);
+
+                payload.scale.set(controls.scale, controls.scale, controls.scale);
+
+                controls.positionX = payload.position.x;
+                controls.positionY = payload.position.y;
+                controls.positionZ = payload.position.z;
+
+                // var newScaleValue = value;
+                // var scaleRatio = newScaleValue / oldScaleValue;
+
+                // var currentPosition = payload.position;
+
+                // var mesh = payload.children[0];
+                // var geometry = mesh.geometry;
+                // var boundingSphere = geometry.boundingSphere;
+                // var center = boundingSphere.center.clone();
+                // var scaledCenterPosition = center.multiplyScalar(newScaleValue);
+
+                // var differenceFromCenter = scaledCenterPosition.sub(currentPosition);
+                // var scaledDifferenceFromCenter = differenceFromCenter.multiplyScalar(scaleRatio);
+
+                // // Changing the scale may change the location of the center.
+
+
+
+                // var radius = boundingSphere.radius;
+                // var desiredRadius = value;
+
+
+                // payload.position.x = -center.x * newScaleValue;
+                // payload.position.y = -center.y * newScaleValue;
+                // payload.position.z = -center.z * newScaleValue;
+                // controls.positionX = payload.position.x;
+                // controls.positionY = payload.position.y;
+                // controls.positionZ = payload.position.z;
+            }
+        });
 
         var path = "models/00/models/";
 
@@ -88,11 +192,40 @@
         materialLoader.setPath(path);
         materialLoader.load("output.mtl", function (materials) {
             materials.preload();
-            materials.side = THREE.DoubleSide;
+
+            // console.log(materials);
+
+            // Make all materials double-sided so they may be seen.
+            Object.keys(materials.materials).forEach(function (key) {
+                var material = materials.materials[key];
+                material.side = THREE.DoubleSide;
+            });
+
             var objLoader = new THREE.OBJLoader();
             objLoader.setMaterials(materials);
             objLoader.setPath(path);
             objLoader.load("output.obj", function (object) {
+                object.name = payloadName;
+                // console.log(object);
+
+                var mesh = object.children[0];
+                var geometry = mesh.geometry; // Will be a buffer geometry.
+                geometry.computeBoundingSphere();
+                var boundingSphere = geometry.boundingSphere;
+
+                var radius = boundingSphere.radius;
+                var newScaleValue = desiredInitialRadius / radius;
+                object.scale.set(newScaleValue, newScaleValue, newScaleValue);
+                controls.scale = newScaleValue;
+
+                var center = boundingSphere.center;
+                var scaledCenter = center.clone().multiplyScalar(newScaleValue);
+                object.position.sub(scaledCenter); // The initial position is zero.
+
+                controls.positionX = object.position.x;
+                controls.positionY = object.position.y;
+                controls.positionZ = object.position.z;
+
                 // var position = object.position;
                 // object.position.set(-position);
                 scene.add(object);
@@ -118,6 +251,8 @@
 
         // Renders the scene and updates the render as needed.
         function render() {
+            // console.log(scene);
+
             stats.update();
 
             var delta = clock.getDelta();
@@ -128,8 +263,6 @@
 
             // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
             requestAnimationFrame(render);
-
-            console.log(camera.rotation);
 
             // Render the scene.
             renderer.render(scene, camera);

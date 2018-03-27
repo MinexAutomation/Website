@@ -23,13 +23,26 @@
 </head>
 
 <body>
+    <div id="WebGL-Output"></div>
     <div id="Stats-Output"></div>
-    <div id="Movement-Selector" onclick="toggleLights()">
-        <div id="Selector">
-            S1
+    <div id="Control-Box">
+        <div class="Controls">
+            <p>Light</p>
+            <div id="Light-On-Off" onclick="toggleLight()">
+                On/Off
+            </div>
+            <div id="Light-Oscillate" onclick="toggleLightOscillation()">
+                Oscillate
+            </div>
+            <!-- <div id="Light-X-Up"></div> -->
+        </div>
+        <div class="Controls">
+            <p>Selection</p>
+            <div id="Selection-On-Off" onclick="toggleSelection()">
+                On/Off
+            </div>
         </div>
     </div>
-    <div id="WebGL-Output"></div>
 </body>
 <script>
     var siteData = new Object();
@@ -70,6 +83,14 @@
         });
 
         var cameraControls = new THREE.TrackballControls(camera, renderer.domElement);
+        siteData.cameraControls = cameraControls;
+
+        // var sphereSelection = new THREE.SphereGeometry(0.2);
+        // var sphereSelectionMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        // var sphereSelectionMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
+        // sphereSelectionMesh.position = pointLight.position;
+        // scene.add(sphereLightMesh);
+        setSelection(selectionOn);
 
         // var cameraControls = new THREE.FirstPersonControls(camera);
         // cameraControls.lookSpeed = 0.1;
@@ -88,12 +109,14 @@
 
         // Create a light, set its position, and add it to the scene.
         var pointLight = new THREE.PointLight(0xffffff);
-        pointLight.position.set(0, 0, 0);
+        pointLight.position.copy(lightPosition);
         scene.add(pointLight);
         siteData.pointLight = pointLight;
+        setLight(lightOn);
+        setLightOscillation(lightOscillation);
 
         var sphereLight = new THREE.SphereGeometry(0.5);
-        var sphereLightMaterial = new THREE.MeshBasicMaterial({color: 0xffec9a});
+        var sphereLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffec9a });
         var sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
         sphereLightMesh.position = pointLight.position;
         scene.add(sphereLightMesh);
@@ -234,6 +257,7 @@
 
         // Renders the scene and updates the render as needed.
         var step = 0;
+        var increment = 0.05;
         function render() {
             // console.log(scene);
 
@@ -242,11 +266,12 @@
             var delta = clock.getDelta();
 
             cameraControls.update(delta);
-            
-            step += 0.05;
-            pointLight.position.x = 10 * Math.sin(step);
-            sphereLightMesh.position.x = 10 * Math.sin(step);
 
+            if (lightOscillation) {
+                step += increment;
+            }
+            pointLight.position.x = lightPosition.x + 10 * Math.sin(step);
+            sphereLightMesh.position.x = lightPosition.x + 10 * Math.sin(step);
 
             // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
             requestAnimationFrame(render);
@@ -268,18 +293,90 @@
 
             return stats;
         }
+
+        renderer.domElement.addEventListener("mousedown", onWebGLOutputMouseDown);
+        function onWebGLOutputMouseDown(event) {
+            console.log("onWebGLOutputMouseDown");
+            if(selectionOn) {
+                console.log("selectionOn");
+
+                var vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+                vector = vector.unproject(camera);
+
+                var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+                var payload = scene.getObjectByName(payloadName);
+                var intersects = raycaster.intersectObjects(payload.children);
+                if(intersects.length > 0) {
+                    var firstIntersection = intersects[0];
+                    console.log(firstIntersection);
+
+                    var selectedPointGeometry = new THREE.SphereGeometry(0.2);
+                    var selectedPointMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+                    var selectedPointMesh = new THREE.Mesh(selectedPointGeometry, selectedPointMaterial);
+                    selectedPointMesh.position.copy(firstIntersection.point);
+                    scene.add(selectedPointMesh);
+                }
+            }
+        }
     }
     window.onload = init;
 
-    function toggleLights() {
-        var pointLight = siteData.pointLight;
+    var lightOn = true;
+    function toggleLight() {
+        lightOn = !lightOn;
+        setLight(lightOn);
+    }
+    function setLight(onOrOff) {
+        var toggleSwitch = document.getElementById("Light-On-Off");
+        toggleSwitchStyle(toggleSwitch, onOrOff);
 
-        if (pointLight.visible) {
-            pointLight.visible = false;
-        } else {
+        var pointLight = siteData.pointLight;
+        if (onOrOff) {
             pointLight.visible = true;
+        } else {
+            pointLight.visible = false;
         }
     }
+    function toggleSwitchStyle(toggleSwitch, onOrOff) {
+        if (onOrOff) {
+            toggleSwitch.style.background = "white";
+            toggleSwitch.style.color = "black";
+        } else {
+            toggleSwitch.style.background = "black";
+            toggleSwitch.style.color = "white";
+        }
+    }
+
+    var lightOscillation = false;
+    function toggleLightOscillation() {
+        lightOscillation = !lightOscillation;
+        setLightOscillation(lightOscillation);
+    }
+    function setLightOscillation(onOrOff) {
+        var toggleSwitch = document.getElementById("Light-Oscillate");
+        toggleSwitchStyle(toggleSwitch, onOrOff);
+    }
+
+    var lightPosition = new THREE.Vector3(10, 0, 0);
+
+    // var
+    var selectionOn = false;
+    function toggleSelection() {
+        selectionOn = !selectionOn;
+        setSelection(selectionOn);
+    }
+    function setSelection(onOrOff) {
+        if(onOrOff) {
+            siteData.cameraControls.enabled = false;
+        } else {
+            siteData.cameraControls.enabled = true;
+        }
+
+        var toggleSwitch = document.getElementById("Selection-On-Off");
+        toggleSwitchStyle(toggleSwitch, onOrOff);
+    }
+
 </script>
 
 </html>

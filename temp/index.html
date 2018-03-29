@@ -11,7 +11,11 @@
     <script src="js/OrbitControls.js"></script>
     <script src="js/FirstPersonControls.js"></script>
     <script src="js/FlyControls.js"></script>
-    <link rel="stylesheet" href="css/style.css" type="text/css">
+    <script src="js/main.js"></script>
+    <script src="js/controls-lights.js"></script>
+    <script src="js/controls-selection.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/modal-style.css">
     <style>
         body {
             margin: 0;
@@ -25,357 +29,95 @@
 <body>
     <div id="WebGL-Output"></div>
     <div id="Stats-Output"></div>
-    <div id="Control-Box">
-        <div class="Controls">
-            <p>Light</p>
-            <div id="Light-On-Off" onclick="toggleLight()">
-                On/Off
+    <div id="LeftFloat">
+        <div id="Control-Box">
+            <div class="Controls">
+                <p>Light</p>
+                <div class="Control-Button" id="Light-On-Off" onclick="toggleLight()">
+                    On/Off
+                </div>
+                <div class="Control-Button" id="Light-Oscillate" onclick="toggleLightOscillation()">
+                    Oscillate
+                </div>
+                <!-- <div id="Light-X-Up"></div> -->
             </div>
-            <div id="Light-Oscillate" onclick="toggleLightOscillation()">
-                Oscillate
+            <div class="Controls">
+                <p>Selection</p>
+                <div class="Control-Button" id="Selection-On-Off" onclick="toggleSelection()">
+                    On/Off
+                </div>
             </div>
-            <!-- <div id="Light-X-Up"></div> -->
         </div>
-        <div class="Controls">
-            <p>Selection</p>
-            <div id="Selection-On-Off" onclick="toggleSelection()">
-                On/Off
+        <div id="simpleModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span id="modalCloseButton" class="close-btn">&times;</span>
+                    <h2>Point of Interest</h2>
+                </div>
+                <div class="modal-body">
+                    <form id="pointOfInterestAnnotationForm">
+                        <div>
+                            <label for="pointOfInterestName">Name</label>
+                            <input type="text" id="pointOfInterestName" name="name" placeholder="...">
+                        </div>
+                        <div>
+                            <label for="selectedPointAnnotation">Description</label>
+                            <textarea id="selectedPointAnnotation" name="annotation" rows="8" placeholder="..."></textarea>
+                        </div>
+                        <button type="submit" class="btn">Save</button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <h3>Simple Point of Interest</h3>
+                </div>
             </div>
         </div>
     </div>
+
+    <script src="js/modal-selection.js"></script>
 </body>
 <script>
-    var siteData = new Object();
-
     // Sets up the scene.
     function init() {
-        var payloadName = "payload";
-        var desiredInitialRadius = 20;
+        initializeSite();
 
-        var clock = new THREE.Clock();
-
-        var stats = initStats();
-
-        // Create the scene and set the scene size.
-        var scene = new THREE.Scene();
-
-        // Create a camera, zoom it out from the model a bit, and add it to the scene.
-        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
-        camera.position.set(-50, -50, -50);
-        // // camera.lookAt(new THREE.Vector3(7, , 0));
-        // camera.rotation.x = 2.5;
-        // camera.rotation.y = -0.5;
-        // camera.rotation.z = 2.78;
-        camera.lookAt(0, 0, 0);
-        scene.add(camera);
-
-        // Create a renderer and add it to the DOM.
-        var renderer = new THREE.WebGLRenderer();
-        renderer.setClearColor(0xffffff, 1.0); // Set the background color of the scene.
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById("WebGL-Output").appendChild(renderer.domElement);
-
-        // Create an event listener that resizes the renderer with the browser window.
-        window.addEventListener('resize', function () {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-        });
-
-        var cameraControls = new THREE.TrackballControls(camera, renderer.domElement);
-        siteData.cameraControls = cameraControls;
-
-        // var sphereSelection = new THREE.SphereGeometry(0.2);
-        // var sphereSelectionMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-        // var sphereSelectionMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
-        // sphereSelectionMesh.position = pointLight.position;
-        // scene.add(sphereLightMesh);
-        setSelection(selectionOn);
-
-        // var cameraControls = new THREE.FirstPersonControls(camera);
-        // cameraControls.lookSpeed = 0.1;
-        // cameraControls.movementSpeed = 10;
-        // cameraControls.noFly = true;
-        // cameraControls.lookVertical = true;
-        // cameraControls.constrainVertical = true;
-        // cameraControls.verticalMin = 1.0;
-        // cameraControls.verticalMax = 2.0;
-
-        // var cameraControls = new THREE.FlyControls(camera);
-        // cameraControls.movementSpeed = 10;
-        // cameraControls.domElement = document.querySelector("#WebGL-Output");
-        // cameraControls.rollSpeed = Math.PI / 10;
-        // cameraControls.dragToLook = false;
-
-        // Create a light, set its position, and add it to the scene.
-        var pointLight = new THREE.PointLight(0xffffff);
-        pointLight.position.copy(lightPosition);
-        scene.add(pointLight);
-        siteData.pointLight = pointLight;
-        setLight(lightOn);
-        setLightOscillation(lightOscillation);
-
-        var sphereLight = new THREE.SphereGeometry(0.5);
-        var sphereLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffec9a });
-        var sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
-        sphereLightMesh.position = pointLight.position;
-        scene.add(sphereLightMesh);
-
-        var ambientLight = new THREE.AmbientLight(0x404040);
-        scene.add(ambientLight);
-
-        var axes = new THREE.AxesHelper(50);
-        scene.add(axes);
-
-        var controls = new function () {
-            this.positionX = 0;
-            this.positionY = 0;
-            this.positionZ = 0;
-            this.scale = 1;
-        };
-
-        var datGui = new dat.GUI();
-        var modelFolder = datGui.addFolder("Model");
-        modelFolder.open();
-        var maxRange = 100;
-        var positionXControl = modelFolder.add(controls, "positionX", -maxRange, maxRange);
-        var positionYControl = modelFolder.add(controls, "positionY", -maxRange, maxRange);
-        var positionZControl = modelFolder.add(controls, "positionZ", -maxRange, maxRange);
-        var scaleControl = modelFolder.add(controls, "scale", 0.1, 50);
-
-        positionXControl.listen();
-        positionXControl.onChange(function (value) {
-            var payload = scene.getObjectByName(payloadName);
-            if (payload !== undefined) {
-                payload.position.x = controls.positionX;
-            };
-        });
-        positionYControl.listen();
-        positionYControl.onChange(function (value) {
-            var payload = scene.getObjectByName(payloadName);
-            if (payload !== undefined) {
-                payload.position.y = controls.positionY;
-            };
-        });
-        positionZControl.listen();
-        positionZControl.onChange(function (value) {
-            var payload = scene.getObjectByName(payloadName);
-            if (payload !== undefined) {
-                payload.position.z = controls.positionZ;
-            };
-        });
-        scaleControl.listen();
-        scaleControl.onChange(function (value) {
-            var payload = scene.getObjectByName(payloadName);
-            if (payload !== undefined) {
-                var mesh = payload.children[0];
-                var geometry = mesh.geometry; // Will be a buffer geometry.
-                var boundingSphere = geometry.boundingSphere;
-                var center = boundingSphere.center;
-
-                var oldScaleVector = payload.scale; // Vector.
-                var oldScaledCenter = center.clone().multiply(oldScaleVector);
-
-                var delta = payload.position.add(oldScaledCenter);
-
-                var newScaleValue = value;
-                var newScaledCenter = center.clone().multiplyScalar(newScaleValue);
-
-                var newPosition = newScaledCenter.clone().negate().add(delta);
-                payload.position.copy(newPosition);
-
-                payload.scale.set(controls.scale, controls.scale, controls.scale);
-
-                controls.positionX = payload.position.x;
-                controls.positionY = payload.position.y;
-                controls.positionZ = payload.position.z;
-            }
-        });
-
-        var path = "models/00/models/";
-
-        var materialLoader = new THREE.MTLLoader();
-        materialLoader.setPath(path);
-        materialLoader.load("output.mtl", function (materials) {
-            materials.preload();
-
-            // console.log(materials);
-
-            // Make all materials double-sided so they may be seen.
-            Object.keys(materials.materials).forEach(function (key) {
-                var material = materials.materials[key];
-                material.side = THREE.DoubleSide;
-            });
-
-            var objLoader = new THREE.OBJLoader();
-            objLoader.setMaterials(materials);
-            objLoader.setPath(path);
-            objLoader.load("output.obj", function (object) {
-                object.name = payloadName;
-                // console.log(object);
-
-                var mesh = object.children[0];
-                var geometry = mesh.geometry; // Will be a buffer geometry.
-                geometry.computeBoundingSphere();
-                var boundingSphere = geometry.boundingSphere;
-
-                var radius = boundingSphere.radius;
-                var newScaleValue = desiredInitialRadius / radius;
-                object.scale.set(newScaleValue, newScaleValue, newScaleValue);
-                controls.scale = newScaleValue;
-
-                var center = boundingSphere.center;
-                var scaledCenter = center.clone().multiplyScalar(newScaleValue);
-                object.position.sub(scaledCenter); // The initial position is zero.
-
-                controls.positionX = object.position.x;
-                controls.positionY = object.position.y;
-                controls.positionZ = object.position.z;
-
-                // var position = object.position;
-                // object.position.set(-position);
-                scene.add(object);
-            },
-                // called when loading is in progresses
-                function (xhr) {
-
-                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-
-                },
-                // called when loading has errors
-                function (error) {
-
-                    console.log('An error happened');
-
-                });
-        });
-
-        // Add OrbitControls so that we can pan around with the mouse.
-        // controls = new THREE.OrbitControls(camera, renderer.domElement);
-
+        var step = 0;
+        var increment = 0.05;
+        var offset = getOffset(step);
         render();
 
         // Renders the scene and updates the render as needed.
-        var step = 0;
-        var increment = 0.05;
         function render() {
             // console.log(scene);
 
-            stats.update();
+            if (siteData.stats !== undefined) {
+                siteData.stats.update();
+            }
 
-            var delta = clock.getDelta();
-
-            cameraControls.update(delta);
+            var delta = siteData.clock.getDelta();
+            siteData.cameraControls.update(delta);
 
             if (lightOscillation) {
                 step += increment;
             }
-            pointLight.position.x = lightPosition.x + 10 * Math.sin(step);
-            sphereLightMesh.position.x = lightPosition.x + 10 * Math.sin(step);
+            var newOffset = getOffset(step);
+            var xIncrement = newOffset - offset;
+            offset = newOffset;
+            moveLight(xIncrement, 0, 0);
 
             // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
             requestAnimationFrame(render);
 
             // Render the scene.
-            renderer.render(scene, camera);
+            siteData.renderer.render(siteData.scene, siteData.camera);
         }
 
-        function initStats() {
-            var stats = new Stats();
-            stats.setMode(0); // 0: fps, 1: ms per frame.
-
-            // Align top-left.
-            stats.domElement.style.position = "absolute";
-            stats.domElement.style.left = "0px";
-            stats.domElement.style.top = "0px";
-
-            document.getElementById("Stats-Output").appendChild(stats.domElement);
-
-            return stats;
-        }
-
-        renderer.domElement.addEventListener("mousedown", onWebGLOutputMouseDown);
-        function onWebGLOutputMouseDown(event) {
-            console.log("onWebGLOutputMouseDown");
-            if(selectionOn) {
-                console.log("selectionOn");
-
-                var vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
-                vector = vector.unproject(camera);
-
-                var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-
-                var payload = scene.getObjectByName(payloadName);
-                var intersects = raycaster.intersectObjects(payload.children);
-                if(intersects.length > 0) {
-                    var firstIntersection = intersects[0];
-                    console.log(firstIntersection);
-
-                    var selectedPointGeometry = new THREE.SphereGeometry(0.2);
-                    var selectedPointMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-                    var selectedPointMesh = new THREE.Mesh(selectedPointGeometry, selectedPointMaterial);
-                    selectedPointMesh.position.copy(firstIntersection.point);
-                    scene.add(selectedPointMesh);
-                }
-            }
+        function getOffset(step) {
+            var offset = 10 * Math.sin(step);
+            return offset;
         }
     }
     window.onload = init;
-
-    var lightOn = true;
-    function toggleLight() {
-        lightOn = !lightOn;
-        setLight(lightOn);
-    }
-    function setLight(onOrOff) {
-        var toggleSwitch = document.getElementById("Light-On-Off");
-        toggleSwitchStyle(toggleSwitch, onOrOff);
-
-        var pointLight = siteData.pointLight;
-        if (onOrOff) {
-            pointLight.visible = true;
-        } else {
-            pointLight.visible = false;
-        }
-    }
-    function toggleSwitchStyle(toggleSwitch, onOrOff) {
-        if (onOrOff) {
-            toggleSwitch.style.background = "white";
-            toggleSwitch.style.color = "black";
-        } else {
-            toggleSwitch.style.background = "black";
-            toggleSwitch.style.color = "white";
-        }
-    }
-
-    var lightOscillation = false;
-    function toggleLightOscillation() {
-        lightOscillation = !lightOscillation;
-        setLightOscillation(lightOscillation);
-    }
-    function setLightOscillation(onOrOff) {
-        var toggleSwitch = document.getElementById("Light-Oscillate");
-        toggleSwitchStyle(toggleSwitch, onOrOff);
-    }
-
-    var lightPosition = new THREE.Vector3(10, 0, 0);
-
-    // var
-    var selectionOn = false;
-    function toggleSelection() {
-        selectionOn = !selectionOn;
-        setSelection(selectionOn);
-    }
-    function setSelection(onOrOff) {
-        if(onOrOff) {
-            siteData.cameraControls.enabled = false;
-        } else {
-            siteData.cameraControls.enabled = true;
-        }
-
-        var toggleSwitch = document.getElementById("Selection-On-Off");
-        toggleSwitchStyle(toggleSwitch, onOrOff);
-    }
 
 </script>
 

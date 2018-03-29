@@ -70,7 +70,7 @@ function testSelectionOfSelectedPoint() {
 }
 
 function handleSelectedPointIntersect(intersect) {
-    if(siteData.selectedPointofInterestIntersect !== undefined) {
+    if (siteData.selectedPointofInterestIntersect !== undefined) {
         devisualizeSelectedPointIntersect();
     }
     siteData.selectedPointofInterestIntersect = intersect;
@@ -79,9 +79,9 @@ function handleSelectedPointIntersect(intersect) {
 
 // Find the point of interest with the same location as the input parameter.
 function findSimplePointOfInterest(location) {
-    for(var i = 0; i < siteData.selectedPoints.length; i++) {
+    for (var i = 0; i < siteData.selectedPoints.length; i++) {
         var selectedPointLocation = siteData.selectedPoints[i].location;
-        if(selectedPointLocation.x == location.x && selectedPointLocation.y == location.y && selectedPointLocation.z == location.z) {
+        if (selectedPointLocation.x == location.x && selectedPointLocation.y == location.y && selectedPointLocation.z == location.z) {
             return siteData.selectedPoints[i];
         }
     }
@@ -164,7 +164,7 @@ function addStoredSelectedPoints() {
 
 function addSelectedPointVisual(vector3) {
     var selectedPointGeometry = new THREE.SphereGeometry(0.2);
-    var selectedPointMaterial = new THREE.MeshBasicMaterial({color: pointOfInterestColor});
+    var selectedPointMaterial = new THREE.MeshBasicMaterial({ color: pointOfInterestColor });
     var selectedPointMesh = new THREE.Mesh(selectedPointGeometry, selectedPointMaterial);
     selectedPointMesh.position.copy(vector3);
     siteData.pointOfInterestMeshes.push(selectedPointMesh);
@@ -214,12 +214,14 @@ function initializeModel() {
             // var position = object.position;
             // object.position.set(-position);
             siteData.scene.add(object);
+
+            document.getElementById('BlockUntilLoaded').style.display = 'none';
         },
             // called when loading is in progresses
             function (xhr) {
-
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-
+                var message = (xhr.loaded / xhr.total * 100) + '% loaded';
+                document.getElementById('BlockUntilLoaded').innerHTML = message;
+                console.log(message);
             },
             // called when loading has errors
             function (error) {

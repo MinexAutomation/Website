@@ -14,7 +14,7 @@ function InteractionMode() {
                 this.mode = InteractionMode.selection;
                 break;
 
-            case thInteractionModeis.volumeSelection:
+            case InteractionMode.volumeSelection:
                 this.mode = InteractionMode.volumeSelection;
                 break;
 

@@ -6,22 +6,13 @@ function toggleLight() {
 }
 function setLight(onOrOff) {
     var toggleSwitch = document.getElementById("Light-On-Off");
-    toggleSwitchStyle(toggleSwitch, onOrOff);
+    toggleSwitchSetOnOff(toggleSwitch, onOrOff);
 
     var pointLight = siteData.pointLight;
     if (onOrOff) {
         pointLight.visible = true;
     } else {
         pointLight.visible = false;
-    }
-}
-function toggleSwitchStyle(toggleSwitch, onOrOff) {
-    if (onOrOff) {
-        toggleSwitch.style.background = "white";
-        toggleSwitch.style.color = "black";
-    } else {
-        toggleSwitch.style.background = "black";
-        toggleSwitch.style.color = "white";
     }
 }
 
@@ -32,7 +23,7 @@ function toggleLightOscillation() {
 }
 function setLightOscillation(onOrOff) {
     var toggleSwitch = document.getElementById("Light-Oscillate");
-    toggleSwitchStyle(toggleSwitch, onOrOff);
+    toggleSwitchSetOnOff(toggleSwitch, onOrOff);
 }
 
 // Respond to keyboard.

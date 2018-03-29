@@ -6,11 +6,11 @@ function toggleSelection() {
 }
 function setSelection(onOrOff) {
     if (onOrOff) {
-        siteData.cameraControls.enabled = false;
+        setModeSelection();
     } else {
-        siteData.cameraControls.enabled = true;
+        setModeCameraMovement();
     }
 
     var toggleSwitch = document.getElementById("Selection-On-Off");
-    toggleSwitchStyle(toggleSwitch, onOrOff);
+    toggleSwitchSetOnOff(toggleSwitch, onOrOff);
 }

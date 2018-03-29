@@ -11,9 +11,6 @@
     <script src="js/OrbitControls.js"></script>
     <script src="js/FirstPersonControls.js"></script>
     <script src="js/FlyControls.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/controls-lights.js"></script>
-    <script src="js/controls-selection.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/modal-style.css">
     <style>
@@ -32,6 +29,15 @@
     <div id="LeftFloat">
         <div id="Control-Box">
             <div class="Controls">
+                <p id="WebGlDetectedP"></p>
+            </div>
+            <div class="Controls">
+                <p>Move with:</p>
+                <p>A, D, W, S, R, F</p>
+                <p>-or-</p>
+                <p>Arrow keys, shift, control</p>
+            </div>
+            <div class="Controls">
                 <p>Light</p>
                 <div class="Control-Button" id="Light-On-Off" onclick="toggleLight()">
                     On/Off
@@ -45,6 +51,18 @@
                 <p>Selection</p>
                 <div class="Control-Button" id="Selection-On-Off" onclick="toggleSelection()">
                     On/Off
+                </div>
+            </div>
+            <div class="Controls">
+                <p>Volume Selection</p>
+                <div class="Control-Button" id="VolumeSelectionOnOff" onclick="toggleVolumeSelection()">
+                    On/Off
+                </div>
+                <div class="Control-Button" id="Selector1OnOff" onclick="toggleSelector1()">
+                    Selector1
+                </div>
+                <div class="Control-Button" id="Selector2OnOff" onclick="toggleSelector2()">
+                    Selector2
                 </div>
             </div>
         </div>
@@ -74,7 +92,14 @@
         </div>
     </div>
 
+    <script src="js/initialize.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/controls-lights.js"></script>
+    <script src="js/controls-selection.js"></script>
+    <script src="js/controls-volumeSelection.js"></script>
     <script src="js/modal-selection.js"></script>
+    <script src="js/scratch.js"></script>
+    <script src="js/main.js"></script>
 </body>
 <script>
     // Sets up the scene.

@@ -1,4 +1,4 @@
-// Light controls.
+// Light controls.  
 var lightOn = true;
 function toggleLight() {
     lightOn = !lightOn;

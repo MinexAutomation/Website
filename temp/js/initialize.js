@@ -4,6 +4,7 @@ var lightPosition = new THREE.Vector3(10, 0, 0);
 var payloadName = 'payload';
 var pointOfInterestColor = new THREE.Color('greenyellow');
 var selectedPointOfInterestColor = new THREE.Color('red');
+var lightSphereColor = new THREE.Color(0xffec9a);
 
 var path = 'models/00/models/';
 var mtlFileName = 'output.mtl';
@@ -23,13 +24,19 @@ function initializeSite() {
     addDatGui(); // Optional.
 
     initializeSelection();
-
-    initializeVolumeSelection();
 }
 
 var siteData = new Object();
 function initializeSiteData() {
     siteData.pointOfInterestMeshes = [];
+
+    siteData.scale = 0;
+    siteData.position = new THREE.Vector3(0, 0, 0);
+    setInitialOffset();
+}
+
+function setInitialOffset() {
+    siteData.offset = new THREE.Vector3(0, 0, 0);
 }
 
 function initializeSelection() {
@@ -188,35 +195,35 @@ function initializeModel() {
         var objLoader = new THREE.OBJLoader();
         objLoader.setMaterials(materials);
         objLoader.setPath(path);
-        objLoader.load(objFileName, function (object) {
-            object.name = payloadName;
-            // console.log(object);
+        objLoader.load(objFileName,
+            function (object) {
+                object.name = payloadName;
+                siteData.object = object;
+                // console.log(object);
 
-            var mesh = object.children[0];
-            var geometry = mesh.geometry; // Will be a buffer geometry.
-            geometry.computeBoundingSphere();
-            var boundingSphere = geometry.boundingSphere;
+                // Position the loaded object in the center of the screen.
+                var mesh = object.children[0];
+                var geometry = mesh.geometry; // Will be a buffer geometry.
+                geometry.computeBoundingSphere();
+                var boundingSphere = geometry.boundingSphere;
 
-            var radius = boundingSphere.radius;
-            var newScaleValue = desiredInitialRadius / radius;
-            object.scale.set(newScaleValue, newScaleValue, newScaleValue);
-            var controls = siteData.controls;
-            controls.scale = newScaleValue;
+                var radius = boundingSphere.radius;
+                siteData.radius = radius;
+                // siteData.radius = desiredInitialRadius;
+                setInitialScale();
 
-            var center = boundingSphere.center;
-            var scaledCenter = center.clone().multiplyScalar(newScaleValue);
-            object.position.sub(scaledCenter); // The initial position is zero.
+                var center = boundingSphere.center;
+                siteData.center = center.clone();
+                // siteData.center = new THREE.Vector3(0, 0, 0);
 
-            controls.positionX = object.position.x;
-            controls.positionY = object.position.y;
-            controls.positionZ = object.position.z;
+                computeObjectPosition();
+                positionObject();
 
-            // var position = object.position;
-            // object.position.set(-position);
-            siteData.scene.add(object);
+                siteData.scene.add(object);
 
-            document.getElementById('BlockUntilLoaded').style.display = 'none';
-        },
+                // Remove the initially blocking modal now that the object is ready!
+                document.getElementById('BlockUntilLoaded').style.display = 'none';
+            },
             // called when loading is in progresses
             function (xhr) {
                 var message = (xhr.loaded / xhr.total * 100) + '% loaded';
@@ -225,11 +232,27 @@ function initializeModel() {
             },
             // called when loading has errors
             function (error) {
-
-                console.log('An error happened');
-
+                console.log('An error happened.');
+                console.log(error);
             });
     });
+}
+
+function setInitialScale() {
+    var newScaleValue = desiredInitialRadius / siteData.radius;
+    siteData.scale = newScaleValue;
+}
+
+function computeObjectPosition() {
+    var scaledCenter = siteData.center.clone().multiplyScalar(siteData.scale);
+    var positionForCenterAtOrigin = scaledCenter.clone().negate();
+    siteData.position.copy(positionForCenterAtOrigin);
+}
+
+function positionObject() {
+    siteData.object.scale.set(siteData.scale, siteData.scale, siteData.scale);
+    siteData.object.position.copy(siteData.position);
+    siteData.object.position.add(siteData.offset);
 }
 
 function initializeScene() {
@@ -281,7 +304,7 @@ function initializeScene() {
     setLightOscillation(lightOscillation);
 
     var sphereLight = new THREE.SphereGeometry(0.5);
-    var sphereLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffec9a });
+    var sphereLightMaterial = new THREE.MeshBasicMaterial({ color: lightSphereColor });
     var sphereLightMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
     sphereLightMesh.position = pointLight.position;
     siteData.sphereLightMesh = sphereLightMesh;
@@ -302,67 +325,54 @@ function addDatGui() {
     var modelFolder = datGui.addFolder("Model");
     modelFolder.open();
     var maxRange = 100;
-    var positionXControl = modelFolder.add(controls, "positionX", -maxRange, maxRange);
-    var positionYControl = modelFolder.add(controls, "positionY", -maxRange, maxRange);
-    var positionZControl = modelFolder.add(controls, "positionZ", -maxRange, maxRange);
+    var offsetXControl = modelFolder.add(controls, "offsetX", -maxRange, maxRange);
+    var offsetYControl = modelFolder.add(controls, "offsetY", -maxRange, maxRange);
+    var offsetZControl = modelFolder.add(controls, "offsetZ", -maxRange, maxRange);
     var scaleControl = modelFolder.add(controls, "scale", 0.1, 50);
+    modelFolder.add(controls, 'reset');
 
-    positionXControl.listen();
-    positionXControl.onChange(function (value) {
-        var payload = scene.getObjectByName(payloadName);
-        if (payload !== undefined) {
-            payload.position.x = controls.positionX;
-        };
+    offsetXControl.listen();
+    offsetXControl.onChange(function (value) {
+        siteData.offset.x = value;
+        positionObject();
     });
-    positionYControl.listen();
-    positionYControl.onChange(function (value) {
-        var payload = scene.getObjectByName(payloadName);
-        if (payload !== undefined) {
-            payload.position.y = controls.positionY;
-        };
+    offsetYControl.listen();
+    offsetYControl.onChange(function (value) {
+        siteData.offset.y = value;
+        positionObject();
     });
-    positionZControl.listen();
-    positionZControl.onChange(function (value) {
-        var payload = scene.getObjectByName(payloadName);
-        if (payload !== undefined) {
-            payload.position.z = controls.positionZ;
-        };
+    offsetZControl.listen();
+    offsetZControl.onChange(function (value) {
+        siteData.offset.z = value;
+        positionObject();
     });
     scaleControl.listen();
     scaleControl.onChange(function (value) {
-        var payload = scene.getObjectByName(payloadName);
-        if (payload !== undefined) {
-            var mesh = payload.children[0];
-            var geometry = mesh.geometry; // Will be a buffer geometry.
-            var boundingSphere = geometry.boundingSphere;
-            var center = boundingSphere.center;
-
-            var oldScaleVector = payload.scale; // Vector.
-            var oldScaledCenter = center.clone().multiply(oldScaleVector);
-
-            var delta = payload.position.add(oldScaledCenter);
-
-            var newScaleValue = value;
-            var newScaledCenter = center.clone().multiplyScalar(newScaleValue);
-
-            var newPosition = newScaledCenter.clone().negate().add(delta);
-            payload.position.copy(newPosition);
-
-            payload.scale.set(controls.scale, controls.scale, controls.scale);
-
-            controls.positionX = payload.position.x;
-            controls.positionY = payload.position.y;
-            controls.positionZ = payload.position.z;
-        }
+        siteData.scale = value;
+        computeObjectPosition();
+        positionObject();
     });
 }
 
 function initializeDatGuiControls() {
     var controls = new function () {
-        this.positionX = 0;
-        this.positionY = 0;
-        this.positionZ = 0;
-        this.scale = 1;
+        this.offsetX = siteData.offset.x;
+        this.offsetY = siteData.offset.y;
+        this.offsetZ = siteData.offset.z;
+        this.scale = siteData.scale;
+
+        this.reset = function () {
+            setInitialOffset();
+            setInitialScale();
+
+            this.offsetX = siteData.offset.x;
+            this.offsetY = siteData.offset.y;
+            this.offsetZ = siteData.offset.z;
+            this.scale = siteData.scale;
+
+            computeObjectPosition();
+            positionObject();
+        }
     };
     siteData.controls = controls;
 }

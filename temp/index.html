@@ -57,7 +57,7 @@
                 </div>
             </div>
             <div class="Controls">
-                <p>Volume Selection</p>
+                <p>Box Volume Selection</p>
                 <div class="Control-Button" id="VolumeSelectionOnOff" onclick="toggleVolumeSelection()">
                     On/Off
                 </div>
@@ -66,6 +66,18 @@
                 </div>
                 <div class="Control-Button" id="Selector2OnOff" onclick="toggleSelector2()">
                     Selector2
+                </div>
+            </div>
+            <div class="Controls">
+                <p>Sphere Volume Selection</p>
+                <div class="Control-Button" id="SphereVolumeSelectionOnOff" onclick="toggleSphereVolumeSelection">
+                    On/Off
+                </div>
+            </div>
+            <div class="Controls">
+                <p>Scratch Work</p>
+                <div class="Control-Button" id="ScratchButton" onclick="scratch()">
+                    On/Off
                 </div>
             </div>
         </div>
@@ -100,53 +112,13 @@
     <script src="js/controls-lights.js"></script>
     <script src="js/controls-selection.js"></script>
     <script src="js/controls-volumeSelection.js"></script>
+    <script src="js/controls-sphereVolumeSelection"></script>
     <script src="js/modal-selection.js"></script>
-    <script src="js/scratch.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/scratch.js"></script>
 </body>
 <script>
-    // Sets up the scene.
-    function init() {
-        initializeSite();
-
-        var step = 0;
-        var increment = 0.05;
-        var offset = getOffset(step);
-        render();
-
-        // Renders the scene and updates the render as needed.
-        function render() {
-            // console.log(scene);
-
-            if (siteData.stats !== undefined) {
-                siteData.stats.update();
-            }
-
-            var delta = siteData.clock.getDelta();
-            siteData.cameraControls.update(delta);
-
-            if (lightOscillation) {
-                step += increment;
-            }
-            var newOffset = getOffset(step);
-            var xIncrement = newOffset - offset;
-            offset = newOffset;
-            moveLight(xIncrement, 0, 0);
-
-            // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
-            requestAnimationFrame(render);
-
-            // Render the scene.
-            siteData.renderer.render(siteData.scene, siteData.camera);
-        }
-
-        function getOffset(step) {
-            var offset = 10 * Math.sin(step);
-            return offset;
-        }
-    }
     window.onload = init;
-
 </script>
 
 </html>

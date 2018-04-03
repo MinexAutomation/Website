@@ -1,14 +1,5 @@
 siteData.interactionMode = new InteractionMode();
 
-
-function setModeCameraMovement() {
-    siteData.cameraControls.enabled = true;
-}
-
-function setModeSelection() {
-    siteData.cameraControls.enabled = false;
-}
-
 function toggleSwitchSetOnOff(toggleSwitch, onOrOff) {
     if (onOrOff) {
         toggleSwitch.style.background = "white";

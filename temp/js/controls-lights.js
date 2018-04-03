@@ -26,42 +26,6 @@ function setLightOscillation(onOrOff) {
     toggleSwitchSetOnOff(toggleSwitch, onOrOff);
 }
 
-// Respond to keyboard.
-window.addEventListener('keydown', onKeydown);
-function onKeydown(event) {
-    if (event.defaultPrevented) {
-        return; // Do nothing if the event has already been handled.
-    }
-
-    switch (event.key) {
-        case 'ArrowUp':
-        case 'w':
-            moveLight(+defaultIncrement, 0, 0);
-            break;
-        case 'ArrowDown':
-        case 's':
-        moveLight(-defaultIncrement, 0, 0);
-            break;
-
-        case 'ArrowLeft':
-        case 'a':
-        moveLight(0, -defaultIncrement, 0);
-            break;
-        case 'ArrowRight':
-        case 'd':
-        moveLight(0, +defaultIncrement, 0);
-            break;
-        case 'Shift':
-        case 'r':
-        moveLight(0, 0, +defaultIncrement);
-            break;
-        case 'Control':
-        case 'f':
-        moveLight(0, 0, -defaultIncrement);
-            break;
-    }
-}
-
 var defaultIncrement = 1;
 function moveLight(xIncrement, yIncrement, zIncrement) {
     siteData.pointLight.position.x = siteData.pointLight.position.x + xIncrement;
@@ -71,4 +35,9 @@ function moveLight(xIncrement, yIncrement, zIncrement) {
     siteData.sphereLightMesh.position.x = siteData.sphereLightMesh.position.x + xIncrement;
     siteData.sphereLightMesh.position.y = siteData.sphereLightMesh.position.y + yIncrement;
     siteData.sphereLightMesh.position.z = siteData.sphereLightMesh.position.z + zIncrement;
+}
+
+// Create the default object movement mode, which moves the light.
+function setDefaultMovementMode() {
+    siteData.currentObjectMoveFunction = moveLight;
 }

@@ -1,0 +1,74 @@
+#LeftFloat {
+    float: left;
+
+    position: relative;
+    top: 50px; /* Clear the FPS counter. */
+}
+
+#Control-Box {
+    display: inline-block;
+    clear: left;
+    font-size: 12px;
+}
+
+.Controls {
+    border: 1px solid #ccc;
+
+    color: black;
+}
+
+.Controls p {
+    margin: 0;
+
+    padding-top: 5px;
+    padding-bottom: 5px;
+
+    text-align: center;
+}
+
+.Control-Button {
+    height: 25px;
+    line-height: 25px;
+
+    display: table;
+    margin: 0 auto;
+
+    border: 1px solid black;
+    border-radius: 11px;
+    margin-bottom: 2px;
+
+    text-align: center;
+ 
+    padding-left: 10px;
+    padding-right: 10px;
+
+    user-select: none;
+}
+
+#WebGL-Output {
+    position: absolute;
+    top:0px;
+    left:0px;
+}
+
+#BlockUntilLoaded {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    z-index: 1;
+
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 40px;
+    line-height: 1.6;
+
+    color: black;
+    background-color: rgba(0, 0, 0, 0.5);
+
+    text-align: center;
+
+    user-select: none;
+}

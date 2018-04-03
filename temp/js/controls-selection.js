@@ -6,11 +6,21 @@ function toggleSelection() {
 }
 function setSelection(onOrOff) {
     if (onOrOff) {
-        setModeSelection();
+        setSelectionMode();
     } else {
-        setModeCameraMovement();
+        setDefaultSelectionMode();
     }
 
     var toggleSwitch = document.getElementById("Selection-On-Off");
     toggleSwitchSetOnOff(toggleSwitch, onOrOff);
+}
+
+function setDefaultSelectionMode() {
+    setDefaultMovementMode();
+    siteData.cameraControls.enabled = true;
+}
+
+function setSelectionMode() {
+    siteData.currentObjectMoveFunction = null;
+    siteData.cameraControls.enabled = false;
 }

@@ -43,8 +43,8 @@ export class Application {
     }
 
     private static OnWindowResize() {
-        this.Theater.Renderer.setSize(window.innerWidth, window.innerHeight);
-        this.Theater.Camera.aspect = window.innerWidth / window.innerHeight;
-        this.Theater.Camera.updateProjectionMatrix();
+        Application.Theater.Renderer.setSize(window.innerWidth, window.innerHeight);
+        Application.Theater.Camera.aspect = window.innerWidth / window.innerHeight;
+        Application.Theater.Camera.updateProjectionMatrix();
     }
 }

@@ -1,0 +1,12 @@
+#ControlPanel {
+    float: left;
+
+    position: absolute;
+    top: 50px; /* Clear the FPS counter. */
+}
+
+.Control {
+    border: 1px solid #ccc;
+
+    color: black;
+}

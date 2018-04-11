@@ -1,0 +1,15 @@
+{
+  "name": "temp3",
+  "version": "1.0.0",
+  "description": "Website 3D with modules",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "David Coats",
+  "license": "MIT",
+  "dependencies": {
+    "dat.gui": "^0.7.1",
+    "three": "^0.91.0"
+  }
+}

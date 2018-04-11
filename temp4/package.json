@@ -1,0 +1,21 @@
+{
+  "name": "temp4",
+  "version": "1.0.0",
+  "description": "Website 3D using TypeScript and GUI Binding",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "David Coats",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/dat.gui": "^0.6.0",
+    "@types/three": "^0.91.3",
+    "source-map-loader": "^0.2.3",
+    "webpack": "^4.5.0"
+  },
+  "dependencies": {
+    "dat.gui": "^0.7.0-0",
+    "three": "^0.91.0"
+  }
+}

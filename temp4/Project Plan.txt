@@ -1,0 +1,21 @@
+The website/temp4 project is a re-make of the Website 3D project.
+
+The prior Website 3D project was written in direct JavaScript, and was a proof-of-concept that showed I could:
+*. Load OBJ and MTL files and create a 3D model viewable on the internet.
+*. Craft my own buttons to carry out actions on the 3D model.
+*. Respond to mouse-clicks and key-presses to carry out actions on the 3D model.
+*. Create modals for data entry.
+*. Persist data to local storage.
+*. Implement rudimentary program logic in JavaScript, like toggling one-of-a-set buttons.
+*. Implement complex volume selection logic in JavaScript, that uses the three.js library.
+*. Create a website and host it via GitHub pages.
+
+The prior Website 3D project had many limitations. It was:
+*. Written in plain JavaScript, which lacks static typing. This meant that until runtime, it was a mystery what properties existed for a variable. This also greatly limited VS Code's intellisense.
+*. Written in non-object oriented script code. This meant that managing state was done through a single global variable with numerous fields tacked on throughout the code.
+*. Written without the use of JS modules. This meant that final composition of all scripts was done by the HTML page. This also meant script tags had to be in the right order.
+
+The website/temp4 project will re-make the same functionality, but using TypeScript and Webpack to allow object oriented programming, great VS Code intellisense, and code modularization.
+
+The website/temp4 project will further extend the Website 3D project by adding functionality to:
+*. Select point, line, surface, and volumes within the 3D model and label those selections with metadata.

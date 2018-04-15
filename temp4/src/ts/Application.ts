@@ -90,6 +90,8 @@ export class Application {
             // Start in the set preferred coordinate system mode.
             let index = ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCoordinateSystemMode.Info);
             Application.ModesControl.SetSelectedIndex(index);
+
+            return;
         }
 
         let preferredCameraPositionPreviouslyDefined = LocalStorageManager.PreferredCameraPositionExists();
@@ -102,6 +104,8 @@ export class Application {
             // Start in the set preferred camera position mode.
             let index = ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode.Info);
             Application.ModesControl.SetSelectedIndex(index);
+
+            return;
         }
     }
 

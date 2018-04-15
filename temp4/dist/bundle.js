@@ -52108,6 +52108,7 @@ var Application = /** @class */ (function () {
             // Start in the set preferred coordinate system mode.
             var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.Info);
             Application.ModesControl.SetSelectedIndex(index);
+            return;
         }
         var preferredCameraPositionPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCameraPositionExists();
         if (preferredCameraPositionPreviouslyDefined) {
@@ -52119,6 +52120,7 @@ var Application = /** @class */ (function () {
             // Start in the set preferred camera position mode.
             var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info);
             Application.ModesControl.SetSelectedIndex(index);
+            return;
         }
     };
     Application.Scratch = function (ev) {

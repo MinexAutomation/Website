@@ -144,8 +144,6 @@ export class ModelInitialization {
             materialLoader.load(mtlFileName, function (materials) {
                 materials.preload();
 
-                // console.log(materials);
-
                 // Make all materials double-sided so they may be seen.
                 Object.keys(materials.materials).forEach(function (key) {
                     var material = materials.materials[key];
@@ -159,7 +157,6 @@ export class ModelInitialization {
                     function (object) {
                         object.name = payloadName;
                         siteData.object = object;
-                        // console.log(object);
 
                         // Position the loaded object in the center of the screen.
                         var mesh = <THREE.Mesh>object.children[0];

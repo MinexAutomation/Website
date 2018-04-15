@@ -49512,6 +49512,1171 @@ THREE.TrackballControls.prototype.constructor = THREE.TrackballControls;
 
 /***/ }),
 
+/***/ "./node_modules/three/examples/js/controls/TransformControls.js":
+/*!**********************************************************************!*\
+  !*** ./node_modules/three/examples/js/controls/TransformControls.js ***!
+  \**********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+/* WEBPACK VAR INJECTION */(function(THREE) {/**
+ * @author arodic / https://github.com/arodic
+ */
+
+( function () {
+
+	'use strict';
+
+	var GizmoMaterial = function ( parameters ) {
+
+		THREE.MeshBasicMaterial.call( this );
+
+		this.depthTest = false;
+		this.depthWrite = false;
+		this.fog = false;
+		this.side = THREE.FrontSide;
+		this.transparent = true;
+
+		this.setValues( parameters );
+
+		this.oldColor = this.color.clone();
+		this.oldOpacity = this.opacity;
+
+		this.highlight = function( highlighted ) {
+
+			if ( highlighted ) {
+
+				this.color.setRGB( 1, 1, 0 );
+				this.opacity = 1;
+
+			} else {
+
+				this.color.copy( this.oldColor );
+				this.opacity = this.oldOpacity;
+
+			}
+
+		};
+
+	};
+
+	GizmoMaterial.prototype = Object.create( THREE.MeshBasicMaterial.prototype );
+	GizmoMaterial.prototype.constructor = GizmoMaterial;
+
+
+	var GizmoLineMaterial = function ( parameters ) {
+
+		THREE.LineBasicMaterial.call( this );
+
+		this.depthTest = false;
+		this.depthWrite = false;
+		this.fog = false;
+		this.transparent = true;
+		this.linewidth = 1;
+
+		this.setValues( parameters );
+
+		this.oldColor = this.color.clone();
+		this.oldOpacity = this.opacity;
+
+		this.highlight = function( highlighted ) {
+
+			if ( highlighted ) {
+
+				this.color.setRGB( 1, 1, 0 );
+				this.opacity = 1;
+
+			} else {
+
+				this.color.copy( this.oldColor );
+				this.opacity = this.oldOpacity;
+
+			}
+
+		};
+
+	};
+
+	GizmoLineMaterial.prototype = Object.create( THREE.LineBasicMaterial.prototype );
+	GizmoLineMaterial.prototype.constructor = GizmoLineMaterial;
+
+
+	var pickerMaterial = new GizmoMaterial( { visible: false, transparent: false } );
+
+
+	THREE.TransformGizmo = function () {
+
+		this.init = function () {
+
+			THREE.Object3D.call( this );
+
+			this.handles = new THREE.Object3D();
+			this.pickers = new THREE.Object3D();
+			this.planes = new THREE.Object3D();
+
+			this.add( this.handles );
+			this.add( this.pickers );
+			this.add( this.planes );
+
+			//// PLANES
+
+			var planeGeometry = new THREE.PlaneBufferGeometry( 50, 50, 2, 2 );
+			var planeMaterial = new THREE.MeshBasicMaterial( { visible: false, side: THREE.DoubleSide } );
+
+			var planes = {
+				"XY":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"YZ":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"XZ":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"XYZE": new THREE.Mesh( planeGeometry, planeMaterial )
+			};
+
+			this.activePlane = planes[ "XYZE" ];
+
+			planes[ "YZ" ].rotation.set( 0, Math.PI / 2, 0 );
+			planes[ "XZ" ].rotation.set( - Math.PI / 2, 0, 0 );
+
+			for ( var i in planes ) {
+
+				planes[ i ].name = i;
+				this.planes.add( planes[ i ] );
+				this.planes[ i ] = planes[ i ];
+
+			}
+
+			//// HANDLES AND PICKERS
+
+			var setupGizmos = function( gizmoMap, parent ) {
+
+				for ( var name in gizmoMap ) {
+
+					for ( i = gizmoMap[ name ].length; i --; ) {
+
+						var object = gizmoMap[ name ][ i ][ 0 ];
+						var position = gizmoMap[ name ][ i ][ 1 ];
+						var rotation = gizmoMap[ name ][ i ][ 2 ];
+
+						object.name = name;
+
+						object.renderOrder = Infinity; // avoid being hidden by other transparent objects
+
+						if ( position ) object.position.set( position[ 0 ], position[ 1 ], position[ 2 ] );
+						if ( rotation ) object.rotation.set( rotation[ 0 ], rotation[ 1 ], rotation[ 2 ] );
+
+						parent.add( object );
+
+					}
+
+				}
+
+			};
+
+			setupGizmos( this.handleGizmos, this.handles );
+			setupGizmos( this.pickerGizmos, this.pickers );
+
+			// reset Transformations
+
+			this.traverse( function ( child ) {
+
+				if ( child instanceof THREE.Mesh ) {
+
+					child.updateMatrix();
+
+					var tempGeometry = child.geometry.clone();
+					tempGeometry.applyMatrix( child.matrix );
+					child.geometry = tempGeometry;
+
+					child.position.set( 0, 0, 0 );
+					child.rotation.set( 0, 0, 0 );
+					child.scale.set( 1, 1, 1 );
+
+				}
+
+			} );
+
+		};
+
+		this.highlight = function ( axis ) {
+
+			this.traverse( function( child ) {
+
+				if ( child.material && child.material.highlight ) {
+
+					if ( child.name === axis ) {
+
+						child.material.highlight( true );
+
+					} else {
+
+						child.material.highlight( false );
+
+					}
+
+				}
+
+			} );
+
+		};
+
+	};
+
+	THREE.TransformGizmo.prototype = Object.create( THREE.Object3D.prototype );
+	THREE.TransformGizmo.prototype.constructor = THREE.TransformGizmo;
+
+	THREE.TransformGizmo.prototype.update = function ( rotation, eye ) {
+
+		var vec1 = new THREE.Vector3( 0, 0, 0 );
+		var vec2 = new THREE.Vector3( 0, 1, 0 );
+		var lookAtMatrix = new THREE.Matrix4();
+
+		this.traverse( function( child ) {
+
+			if ( child.name.search( "E" ) !== - 1 ) {
+
+				child.quaternion.setFromRotationMatrix( lookAtMatrix.lookAt( eye, vec1, vec2 ) );
+
+			} else if ( child.name.search( "X" ) !== - 1 || child.name.search( "Y" ) !== - 1 || child.name.search( "Z" ) !== - 1 ) {
+
+				child.quaternion.setFromEuler( rotation );
+
+			}
+
+		} );
+
+	};
+
+	THREE.TransformGizmoTranslate = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var arrowGeometry = new THREE.Geometry();
+		var mesh = new THREE.Mesh( new THREE.CylinderGeometry( 0, 0.05, 0.2, 12, 1, false ) );
+		mesh.position.y = 0.5;
+		mesh.updateMatrix();
+
+		arrowGeometry.merge( mesh.geometry, mesh.matrix );
+
+		var lineXGeometry = new THREE.BufferGeometry();
+		lineXGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
+
+		var lineYGeometry = new THREE.BufferGeometry();
+		lineYGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
+
+		var lineZGeometry = new THREE.BufferGeometry();
+		lineZGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
+
+		this.handleGizmos = {
+
+			X: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0xff0000 } ) ), [ 0.5, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ],
+				[ new THREE.Line( lineXGeometry, new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+
+			Y: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x00ff00 } ) ), [ 0, 0.5, 0 ] ],
+				[	new THREE.Line( lineYGeometry, new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+
+			Z: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x0000ff } ) ), [ 0, 0, 0.5 ], [ Math.PI / 2, 0, 0 ] ],
+				[ new THREE.Line( lineZGeometry, new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+
+			XYZ: [
+				[ new THREE.Mesh( new THREE.OctahedronGeometry( 0.1, 0 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ), [ 0, 0, 0 ], [ 0, 0, 0 ] ]
+			],
+
+			XY: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0xffff00, opacity: 0.25 } ) ), [ 0.15, 0.15, 0 ] ]
+			],
+
+			YZ: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0x00ffff, opacity: 0.25 } ) ), [ 0, 0.15, 0.15 ], [ 0, Math.PI / 2, 0 ] ]
+			],
+
+			XZ: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0xff00ff, opacity: 0.25 } ) ), [ 0.15, 0, 0.15 ], [ - Math.PI / 2, 0, 0 ] ]
+			]
+
+		};
+
+		this.pickerGizmos = {
+
+			X: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+			],
+
+			Y: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
+			],
+
+			Z: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
+			],
+
+			XYZ: [
+				[ new THREE.Mesh( new THREE.OctahedronGeometry( 0.2, 0 ), pickerMaterial ) ]
+			],
+
+			XY: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.4, 0.4 ), pickerMaterial ), [ 0.2, 0.2, 0 ] ]
+			],
+
+			YZ: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.4, 0.4 ), pickerMaterial ), [ 0, 0.2, 0.2 ], [ 0, Math.PI / 2, 0 ] ]
+			],
+
+			XZ: [
+				[ new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.4, 0.4 ), pickerMaterial ), [ 0.2, 0, 0.2 ], [ - Math.PI / 2, 0, 0 ] ]
+			]
+
+		};
+
+		this.setActivePlane = function ( axis, eye ) {
+
+			var tempMatrix = new THREE.Matrix4();
+			eye.applyMatrix4( tempMatrix.getInverse( tempMatrix.extractRotation( this.planes[ "XY" ].matrixWorld ) ) );
+
+			if ( axis === "X" ) {
+
+				this.activePlane = this.planes[ "XY" ];
+
+				if ( Math.abs( eye.y ) > Math.abs( eye.z ) ) this.activePlane = this.planes[ "XZ" ];
+
+			}
+
+			if ( axis === "Y" ) {
+
+				this.activePlane = this.planes[ "XY" ];
+
+				if ( Math.abs( eye.x ) > Math.abs( eye.z ) ) this.activePlane = this.planes[ "YZ" ];
+
+			}
+
+			if ( axis === "Z" ) {
+
+				this.activePlane = this.planes[ "XZ" ];
+
+				if ( Math.abs( eye.x ) > Math.abs( eye.y ) ) this.activePlane = this.planes[ "YZ" ];
+
+			}
+
+			if ( axis === "XYZ" ) this.activePlane = this.planes[ "XYZE" ];
+
+			if ( axis === "XY" ) this.activePlane = this.planes[ "XY" ];
+
+			if ( axis === "YZ" ) this.activePlane = this.planes[ "YZ" ];
+
+			if ( axis === "XZ" ) this.activePlane = this.planes[ "XZ" ];
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoTranslate.prototype = Object.create( THREE.TransformGizmo.prototype );
+	THREE.TransformGizmoTranslate.prototype.constructor = THREE.TransformGizmoTranslate;
+
+	THREE.TransformGizmoRotate = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var CircleGeometry = function ( radius, facing, arc ) {
+
+			var geometry = new THREE.BufferGeometry();
+			var vertices = [];
+			arc = arc ? arc : 1;
+
+			for ( var i = 0; i <= 64 * arc; ++ i ) {
+
+				if ( facing === 'x' ) vertices.push( 0, Math.cos( i / 32 * Math.PI ) * radius, Math.sin( i / 32 * Math.PI ) * radius );
+				if ( facing === 'y' ) vertices.push( Math.cos( i / 32 * Math.PI ) * radius, 0, Math.sin( i / 32 * Math.PI ) * radius );
+				if ( facing === 'z' ) vertices.push( Math.sin( i / 32 * Math.PI ) * radius, Math.cos( i / 32 * Math.PI ) * radius, 0 );
+
+			}
+
+			geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+			return geometry;
+
+		};
+
+		this.handleGizmos = {
+
+			X: [
+				[ new THREE.Line( new CircleGeometry( 1, 'x', 0.5 ), new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+
+			Y: [
+				[ new THREE.Line( new CircleGeometry( 1, 'y', 0.5 ), new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+
+			Z: [
+				[ new THREE.Line( new CircleGeometry( 1, 'z', 0.5 ), new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+
+			E: [
+				[ new THREE.Line( new CircleGeometry( 1.25, 'z', 1 ), new GizmoLineMaterial( { color: 0xcccc00 } ) ) ]
+			],
+
+			XYZE: [
+				[ new THREE.Line( new CircleGeometry( 1, 'z', 1 ), new GizmoLineMaterial( { color: 0x787878 } ) ) ]
+			]
+
+		};
+
+		this.pickerGizmos = {
+
+			X: [
+				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, - Math.PI / 2, - Math.PI / 2 ] ]
+			],
+
+			Y: [
+				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ Math.PI / 2, 0, 0 ] ]
+			],
+
+			Z: [
+				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+			],
+
+			E: [
+				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1.25, 0.12, 2, 24 ), pickerMaterial ) ]
+			],
+
+			XYZE: [
+				[ new THREE.Mesh() ]// TODO
+			]
+
+		};
+
+		this.setActivePlane = function ( axis ) {
+
+			if ( axis === "E" ) this.activePlane = this.planes[ "XYZE" ];
+
+			if ( axis === "X" ) this.activePlane = this.planes[ "YZ" ];
+
+			if ( axis === "Y" ) this.activePlane = this.planes[ "XZ" ];
+
+			if ( axis === "Z" ) this.activePlane = this.planes[ "XY" ];
+
+		};
+
+		this.update = function ( rotation, eye2 ) {
+
+			THREE.TransformGizmo.prototype.update.apply( this, arguments );
+
+			var tempMatrix = new THREE.Matrix4();
+			var worldRotation = new THREE.Euler( 0, 0, 1 );
+			var tempQuaternion = new THREE.Quaternion();
+			var unitX = new THREE.Vector3( 1, 0, 0 );
+			var unitY = new THREE.Vector3( 0, 1, 0 );
+			var unitZ = new THREE.Vector3( 0, 0, 1 );
+			var quaternionX = new THREE.Quaternion();
+			var quaternionY = new THREE.Quaternion();
+			var quaternionZ = new THREE.Quaternion();
+			var eye = eye2.clone();
+
+			worldRotation.copy( this.planes[ "XY" ].rotation );
+			tempQuaternion.setFromEuler( worldRotation );
+
+			tempMatrix.makeRotationFromQuaternion( tempQuaternion ).getInverse( tempMatrix );
+			eye.applyMatrix4( tempMatrix );
+
+			this.traverse( function( child ) {
+
+				tempQuaternion.setFromEuler( worldRotation );
+
+				if ( child.name === "X" ) {
+
+					quaternionX.setFromAxisAngle( unitX, Math.atan2( - eye.y, eye.z ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					child.quaternion.copy( tempQuaternion );
+
+				}
+
+				if ( child.name === "Y" ) {
+
+					quaternionY.setFromAxisAngle( unitY, Math.atan2( eye.x, eye.z ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionY );
+					child.quaternion.copy( tempQuaternion );
+
+				}
+
+				if ( child.name === "Z" ) {
+
+					quaternionZ.setFromAxisAngle( unitZ, Math.atan2( eye.y, eye.x ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionZ );
+					child.quaternion.copy( tempQuaternion );
+
+				}
+
+			} );
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoRotate.prototype = Object.create( THREE.TransformGizmo.prototype );
+	THREE.TransformGizmoRotate.prototype.constructor = THREE.TransformGizmoRotate;
+
+	THREE.TransformGizmoScale = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var arrowGeometry = new THREE.Geometry();
+		var mesh = new THREE.Mesh( new THREE.BoxGeometry( 0.125, 0.125, 0.125 ) );
+		mesh.position.y = 0.5;
+		mesh.updateMatrix();
+
+		arrowGeometry.merge( mesh.geometry, mesh.matrix );
+
+		var lineXGeometry = new THREE.BufferGeometry();
+		lineXGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  1, 0, 0 ], 3 ) );
+
+		var lineYGeometry = new THREE.BufferGeometry();
+		lineYGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 1, 0 ], 3 ) );
+
+		var lineZGeometry = new THREE.BufferGeometry();
+		lineZGeometry.addAttribute( 'position', new THREE.Float32BufferAttribute( [ 0, 0, 0,  0, 0, 1 ], 3 ) );
+
+		this.handleGizmos = {
+
+			X: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0xff0000 } ) ), [ 0.5, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ],
+				[ new THREE.Line( lineXGeometry, new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+
+			Y: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x00ff00 } ) ), [ 0, 0.5, 0 ] ],
+				[ new THREE.Line( lineYGeometry, new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+
+			Z: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x0000ff } ) ), [ 0, 0, 0.5 ], [ Math.PI / 2, 0, 0 ] ],
+				[ new THREE.Line( lineZGeometry, new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+
+			XYZ: [
+				[ new THREE.Mesh( new THREE.BoxBufferGeometry( 0.125, 0.125, 0.125 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
+			]
+
+		};
+
+		this.pickerGizmos = {
+
+			X: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+			],
+
+			Y: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
+			],
+
+			Z: [
+				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
+			],
+
+			XYZ: [
+				[ new THREE.Mesh( new THREE.BoxBufferGeometry( 0.4, 0.4, 0.4 ), pickerMaterial ) ]
+			]
+
+		};
+
+		this.setActivePlane = function ( axis, eye ) {
+
+			var tempMatrix = new THREE.Matrix4();
+			eye.applyMatrix4( tempMatrix.getInverse( tempMatrix.extractRotation( this.planes[ "XY" ].matrixWorld ) ) );
+
+			if ( axis === "X" ) {
+
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs( eye.y ) > Math.abs( eye.z ) ) this.activePlane = this.planes[ "XZ" ];
+
+			}
+
+			if ( axis === "Y" ) {
+
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs( eye.x ) > Math.abs( eye.z ) ) this.activePlane = this.planes[ "YZ" ];
+
+			}
+
+			if ( axis === "Z" ) {
+
+				this.activePlane = this.planes[ "XZ" ];
+				if ( Math.abs( eye.x ) > Math.abs( eye.y ) ) this.activePlane = this.planes[ "YZ" ];
+
+			}
+
+			if ( axis === "XYZ" ) this.activePlane = this.planes[ "XYZE" ];
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoScale.prototype = Object.create( THREE.TransformGizmo.prototype );
+	THREE.TransformGizmoScale.prototype.constructor = THREE.TransformGizmoScale;
+
+	THREE.TransformControls = function ( camera, domElement ) {
+
+		// TODO: Make non-uniform scale and rotate play nice in hierarchies
+		// TODO: ADD RXYZ contol
+
+		THREE.Object3D.call( this );
+
+		domElement = ( domElement !== undefined ) ? domElement : document;
+
+		this.object = undefined;
+		this.visible = false;
+		this.translationSnap = null;
+		this.rotationSnap = null;
+		this.space = "world";
+		this.size = 1;
+		this.axis = null;
+
+		var scope = this;
+
+		var _mode = "translate";
+		var _dragging = false;
+		var _gizmo = {
+
+			"translate": new THREE.TransformGizmoTranslate(),
+			"rotate": new THREE.TransformGizmoRotate(),
+			"scale": new THREE.TransformGizmoScale()
+		};
+
+		for ( var type in _gizmo ) {
+
+			var gizmoObj = _gizmo[ type ];
+
+			gizmoObj.visible = ( type === _mode );
+			this.add( gizmoObj );
+
+		}
+
+		var changeEvent = { type: "change" };
+		var mouseDownEvent = { type: "mouseDown" };
+		var mouseUpEvent = { type: "mouseUp", mode: _mode };
+		var objectChangeEvent = { type: "objectChange" };
+
+		var ray = new THREE.Raycaster();
+		var pointerVector = new THREE.Vector2();
+
+		var point = new THREE.Vector3();
+		var offset = new THREE.Vector3();
+
+		var rotation = new THREE.Vector3();
+		var offsetRotation = new THREE.Vector3();
+		var scale = 1;
+
+		var lookAtMatrix = new THREE.Matrix4();
+		var eye = new THREE.Vector3();
+
+		var tempMatrix = new THREE.Matrix4();
+		var tempVector = new THREE.Vector3();
+		var tempQuaternion = new THREE.Quaternion();
+		var unitX = new THREE.Vector3( 1, 0, 0 );
+		var unitY = new THREE.Vector3( 0, 1, 0 );
+		var unitZ = new THREE.Vector3( 0, 0, 1 );
+
+		var quaternionXYZ = new THREE.Quaternion();
+		var quaternionX = new THREE.Quaternion();
+		var quaternionY = new THREE.Quaternion();
+		var quaternionZ = new THREE.Quaternion();
+		var quaternionE = new THREE.Quaternion();
+
+		var oldPosition = new THREE.Vector3();
+		var oldScale = new THREE.Vector3();
+		var oldRotationMatrix = new THREE.Matrix4();
+
+		var parentRotationMatrix  = new THREE.Matrix4();
+		var parentScale = new THREE.Vector3();
+
+		var worldPosition = new THREE.Vector3();
+		var worldRotation = new THREE.Euler();
+		var worldRotationMatrix  = new THREE.Matrix4();
+		var camPosition = new THREE.Vector3();
+		var camRotation = new THREE.Euler();
+
+		domElement.addEventListener( "mousedown", onPointerDown, false );
+		domElement.addEventListener( "touchstart", onPointerDown, false );
+
+		domElement.addEventListener( "mousemove", onPointerHover, false );
+		domElement.addEventListener( "touchmove", onPointerHover, false );
+
+		domElement.addEventListener( "mousemove", onPointerMove, false );
+		domElement.addEventListener( "touchmove", onPointerMove, false );
+
+		domElement.addEventListener( "mouseup", onPointerUp, false );
+		domElement.addEventListener( "mouseout", onPointerUp, false );
+		domElement.addEventListener( "touchend", onPointerUp, false );
+		domElement.addEventListener( "touchcancel", onPointerUp, false );
+		domElement.addEventListener( "touchleave", onPointerUp, false );
+
+		this.dispose = function () {
+
+			domElement.removeEventListener( "mousedown", onPointerDown );
+			domElement.removeEventListener( "touchstart", onPointerDown );
+
+			domElement.removeEventListener( "mousemove", onPointerHover );
+			domElement.removeEventListener( "touchmove", onPointerHover );
+
+			domElement.removeEventListener( "mousemove", onPointerMove );
+			domElement.removeEventListener( "touchmove", onPointerMove );
+
+			domElement.removeEventListener( "mouseup", onPointerUp );
+			domElement.removeEventListener( "mouseout", onPointerUp );
+			domElement.removeEventListener( "touchend", onPointerUp );
+			domElement.removeEventListener( "touchcancel", onPointerUp );
+			domElement.removeEventListener( "touchleave", onPointerUp );
+
+		};
+
+		this.attach = function ( object ) {
+
+			this.object = object;
+			this.visible = true;
+			this.update();
+
+		};
+
+		this.detach = function () {
+
+			this.object = undefined;
+			this.visible = false;
+			this.axis = null;
+
+		};
+
+		this.getMode = function () {
+
+			return _mode;
+
+		};
+
+		this.setMode = function ( mode ) {
+
+			_mode = mode ? mode : _mode;
+
+			if ( _mode === "scale" ) scope.space = "local";
+
+			for ( var type in _gizmo ) _gizmo[ type ].visible = ( type === _mode );
+
+			this.update();
+			scope.dispatchEvent( changeEvent );
+
+		};
+
+		this.setTranslationSnap = function ( translationSnap ) {
+
+			scope.translationSnap = translationSnap;
+
+		};
+
+		this.setRotationSnap = function ( rotationSnap ) {
+
+			scope.rotationSnap = rotationSnap;
+
+		};
+
+		this.setSize = function ( size ) {
+
+			scope.size = size;
+			this.update();
+			scope.dispatchEvent( changeEvent );
+
+		};
+
+		this.setSpace = function ( space ) {
+
+			scope.space = space;
+			this.update();
+			scope.dispatchEvent( changeEvent );
+
+		};
+
+		this.update = function () {
+
+			if ( scope.object === undefined ) return;
+
+			scope.object.updateMatrixWorld();
+			worldPosition.setFromMatrixPosition( scope.object.matrixWorld );
+			worldRotation.setFromRotationMatrix( tempMatrix.extractRotation( scope.object.matrixWorld ) );
+
+			camera.updateMatrixWorld();
+			camPosition.setFromMatrixPosition( camera.matrixWorld );
+			camRotation.setFromRotationMatrix( tempMatrix.extractRotation( camera.matrixWorld ) );
+
+			scale = worldPosition.distanceTo( camPosition ) / 6 * scope.size;
+			this.position.copy( worldPosition );
+			this.scale.set( scale, scale, scale );
+
+			if ( camera instanceof THREE.PerspectiveCamera ) {
+
+				eye.copy( camPosition ).sub( worldPosition ).normalize();
+
+			} else if ( camera instanceof THREE.OrthographicCamera ) {
+
+				eye.copy( camPosition ).normalize();
+
+			}
+
+			if ( scope.space === "local" ) {
+
+				_gizmo[ _mode ].update( worldRotation, eye );
+
+			} else if ( scope.space === "world" ) {
+
+				_gizmo[ _mode ].update( new THREE.Euler(), eye );
+
+			}
+
+			_gizmo[ _mode ].highlight( scope.axis );
+
+		};
+
+		function onPointerHover( event ) {
+
+			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
+
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+			var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children );
+
+			var axis = null;
+
+			if ( intersect ) {
+
+				axis = intersect.object.name;
+
+				event.preventDefault();
+
+			}
+
+			if ( scope.axis !== axis ) {
+
+				scope.axis = axis;
+				scope.update();
+				scope.dispatchEvent( changeEvent );
+
+			}
+
+		}
+
+		function onPointerDown( event ) {
+
+			if ( scope.object === undefined || _dragging === true || ( event.button !== undefined && event.button !== 0 ) ) return;
+
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+			if ( pointer.button === 0 || pointer.button === undefined ) {
+
+				var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children );
+
+				if ( intersect ) {
+
+					event.preventDefault();
+					event.stopPropagation();
+
+					scope.axis = intersect.object.name;
+
+					scope.dispatchEvent( mouseDownEvent );
+
+					scope.update();
+
+					eye.copy( camPosition ).sub( worldPosition ).normalize();
+
+					_gizmo[ _mode ].setActivePlane( scope.axis, eye );
+
+					var planeIntersect = intersectObjects( pointer, [ _gizmo[ _mode ].activePlane ] );
+
+					if ( planeIntersect ) {
+
+						oldPosition.copy( scope.object.position );
+						oldScale.copy( scope.object.scale );
+
+						oldRotationMatrix.extractRotation( scope.object.matrix );
+						worldRotationMatrix.extractRotation( scope.object.matrixWorld );
+
+						parentRotationMatrix.extractRotation( scope.object.parent.matrixWorld );
+						parentScale.setFromMatrixScale( tempMatrix.getInverse( scope.object.parent.matrixWorld ) );
+
+						offset.copy( planeIntersect.point );
+
+					}
+
+				}
+
+			}
+
+			_dragging = true;
+
+		}
+
+		function onPointerMove( event ) {
+
+			if ( scope.object === undefined || scope.axis === null || _dragging === false || ( event.button !== undefined && event.button !== 0 ) ) return;
+
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+			var planeIntersect = intersectObjects( pointer, [ _gizmo[ _mode ].activePlane ] );
+
+			if ( planeIntersect === false ) return;
+
+			event.preventDefault();
+			event.stopPropagation();
+
+			point.copy( planeIntersect.point );
+
+			if ( _mode === "translate" ) {
+
+				point.sub( offset );
+				point.multiply( parentScale );
+
+				if ( scope.space === "local" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					if ( scope.axis.search( "X" ) === - 1 ) point.x = 0;
+					if ( scope.axis.search( "Y" ) === - 1 ) point.y = 0;
+					if ( scope.axis.search( "Z" ) === - 1 ) point.z = 0;
+
+					point.applyMatrix4( oldRotationMatrix );
+
+					scope.object.position.copy( oldPosition );
+					scope.object.position.add( point );
+
+				}
+
+				if ( scope.space === "world" || scope.axis.search( "XYZ" ) !== - 1 ) {
+
+					if ( scope.axis.search( "X" ) === - 1 ) point.x = 0;
+					if ( scope.axis.search( "Y" ) === - 1 ) point.y = 0;
+					if ( scope.axis.search( "Z" ) === - 1 ) point.z = 0;
+
+					point.applyMatrix4( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					scope.object.position.copy( oldPosition );
+					scope.object.position.add( point );
+
+				}
+
+				if ( scope.translationSnap !== null ) {
+
+					if ( scope.space === "local" ) {
+
+						scope.object.position.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					}
+
+					if ( scope.axis.search( "X" ) !== - 1 ) scope.object.position.x = Math.round( scope.object.position.x / scope.translationSnap ) * scope.translationSnap;
+					if ( scope.axis.search( "Y" ) !== - 1 ) scope.object.position.y = Math.round( scope.object.position.y / scope.translationSnap ) * scope.translationSnap;
+					if ( scope.axis.search( "Z" ) !== - 1 ) scope.object.position.z = Math.round( scope.object.position.z / scope.translationSnap ) * scope.translationSnap;
+
+					if ( scope.space === "local" ) {
+
+						scope.object.position.applyMatrix4( worldRotationMatrix );
+
+					}
+
+				}
+
+			} else if ( _mode === "scale" ) {
+
+				point.sub( offset );
+				point.multiply( parentScale );
+
+				if ( scope.space === "local" ) {
+
+					if ( scope.axis === "XYZ" ) {
+
+						scale = 1 + ( ( point.y ) / Math.max( oldScale.x, oldScale.y, oldScale.z ) );
+
+						scope.object.scale.x = oldScale.x * scale;
+						scope.object.scale.y = oldScale.y * scale;
+						scope.object.scale.z = oldScale.z * scale;
+
+					} else {
+
+						point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+						if ( scope.axis === "X" ) scope.object.scale.x = oldScale.x * ( 1 + point.x / oldScale.x );
+						if ( scope.axis === "Y" ) scope.object.scale.y = oldScale.y * ( 1 + point.y / oldScale.y );
+						if ( scope.axis === "Z" ) scope.object.scale.z = oldScale.z * ( 1 + point.z / oldScale.z );
+
+					}
+
+				}
+
+			} else if ( _mode === "rotate" ) {
+
+				point.sub( worldPosition );
+				point.multiply( parentScale );
+				tempVector.copy( offset ).sub( worldPosition );
+				tempVector.multiply( parentScale );
+
+				if ( scope.axis === "E" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( lookAtMatrix ) );
+					tempVector.applyMatrix4( tempMatrix.getInverse( lookAtMatrix ) );
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					quaternionE.setFromAxisAngle( eye, rotation.z - offsetRotation.z );
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionE );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				} else if ( scope.axis === "XYZE" ) {
+
+					quaternionE.setFromEuler( point.clone().cross( tempVector ).normalize() ); // rotation axis
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+					quaternionX.setFromAxisAngle( quaternionE, - point.clone().angleTo( tempVector ) );
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				} else if ( scope.space === "local" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					tempVector.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					quaternionXYZ.setFromRotationMatrix( oldRotationMatrix );
+
+					if ( scope.rotationSnap !== null ) {
+
+						quaternionX.setFromAxisAngle( unitX, Math.round( ( rotation.x - offsetRotation.x ) / scope.rotationSnap ) * scope.rotationSnap );
+						quaternionY.setFromAxisAngle( unitY, Math.round( ( rotation.y - offsetRotation.y ) / scope.rotationSnap ) * scope.rotationSnap );
+						quaternionZ.setFromAxisAngle( unitZ, Math.round( ( rotation.z - offsetRotation.z ) / scope.rotationSnap ) * scope.rotationSnap );
+
+					} else {
+
+						quaternionX.setFromAxisAngle( unitX, rotation.x - offsetRotation.x );
+						quaternionY.setFromAxisAngle( unitY, rotation.y - offsetRotation.y );
+						quaternionZ.setFromAxisAngle( unitZ, rotation.z - offsetRotation.z );
+
+					}
+
+					if ( scope.axis === "X" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionX );
+					if ( scope.axis === "Y" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionY );
+					if ( scope.axis === "Z" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionZ );
+
+					scope.object.quaternion.copy( quaternionXYZ );
+
+				} else if ( scope.space === "world" ) {
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					if ( scope.rotationSnap !== null ) {
+
+						quaternionX.setFromAxisAngle( unitX, Math.round( ( rotation.x - offsetRotation.x ) / scope.rotationSnap ) * scope.rotationSnap );
+						quaternionY.setFromAxisAngle( unitY, Math.round( ( rotation.y - offsetRotation.y ) / scope.rotationSnap ) * scope.rotationSnap );
+						quaternionZ.setFromAxisAngle( unitZ, Math.round( ( rotation.z - offsetRotation.z ) / scope.rotationSnap ) * scope.rotationSnap );
+
+					} else {
+
+						quaternionX.setFromAxisAngle( unitX, rotation.x - offsetRotation.x );
+						quaternionY.setFromAxisAngle( unitY, rotation.y - offsetRotation.y );
+						quaternionZ.setFromAxisAngle( unitZ, rotation.z - offsetRotation.z );
+
+					}
+
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					if ( scope.axis === "X" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					if ( scope.axis === "Y" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionY );
+					if ( scope.axis === "Z" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionZ );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				}
+
+			}
+
+			scope.update();
+			scope.dispatchEvent( changeEvent );
+			scope.dispatchEvent( objectChangeEvent );
+
+		}
+
+		function onPointerUp( event ) {
+
+			event.preventDefault(); // Prevent MouseEvent on mobile
+
+			if ( event.button !== undefined && event.button !== 0 ) return;
+
+			if ( _dragging && ( scope.axis !== null ) ) {
+
+				mouseUpEvent.mode = _mode;
+				scope.dispatchEvent( mouseUpEvent );
+
+			}
+
+			_dragging = false;
+
+			if ( 'TouchEvent' in window && event instanceof TouchEvent ) {
+
+				// Force "rollover"
+
+				scope.axis = null;
+				scope.update();
+				scope.dispatchEvent( changeEvent );
+
+			} else {
+
+				onPointerHover( event );
+
+			}
+
+		}
+
+		function intersectObjects( pointer, objects ) {
+
+			var rect = domElement.getBoundingClientRect();
+			var x = ( pointer.clientX - rect.left ) / rect.width;
+			var y = ( pointer.clientY - rect.top ) / rect.height;
+
+			pointerVector.set( ( x * 2 ) - 1, - ( y * 2 ) + 1 );
+			ray.setFromCamera( pointerVector, camera );
+
+			var intersections = ray.intersectObjects( objects, true );
+			return intersections[ 0 ] ? intersections[ 0 ] : false;
+
+		}
+
+	};
+
+	THREE.TransformControls.prototype = Object.create( THREE.Object3D.prototype );
+	THREE.TransformControls.prototype.constructor = THREE.TransformControls;
+
+}() );
+
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js")))
+
+/***/ }),
+
 /***/ "./node_modules/three/examples/js/loaders/MTLLoader.js":
 /*!*************************************************************!*\
   !*** ./node_modules/three/examples/js/loaders/MTLLoader.js ***!
@@ -50891,38 +52056,128 @@ THREE.OBJLoader = ( function () {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
+var ControlPanel_1 = __webpack_require__(/*! ./Controls/ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ./LocalStorageManager */ "./src/ts/LocalStorageManager.js");
 var Miniature_1 = __webpack_require__(/*! ./Miniature */ "./src/ts/Miniature.js");
 var Theater_1 = __webpack_require__(/*! ./Theater */ "./src/ts/Theater.js");
-var TrackballController_1 = __webpack_require__(/*! ./TrackballController */ "./src/ts/TrackballController.js");
+var ScratchControl_1 = __webpack_require__(/*! ./Controls/ScratchControl */ "./src/ts/Controls/ScratchControl.js");
+var TrackballController_1 = __webpack_require__(/*! ./Controllers/TrackballController */ "./src/ts/Controllers/TrackballController.js");
+__webpack_require__(/*! three/TransformControls */ "./node_modules/three/examples/js/controls/TransformControls.js");
+var ModesControl_1 = __webpack_require__(/*! ./Controls/ModesControl */ "./src/ts/Controls/ModesControl.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var LoadingBlocker_1 = __webpack_require__(/*! ./LoadingBlocker */ "./src/ts/LoadingBlocker.js");
+var ModeFactory_1 = __webpack_require__(/*! ./Modes/ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
+var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
 var Application = /** @class */ (function () {
     function Application() {
     }
     Application.Main = function () {
-        Application.SubMain();
-        // Application.Theater = new Theater();
-        // Application.Theater.AddAxes(); // Add these for now.
-        // Application.TrackballController = new TrackballController(Application.Theater);
-        // Application.ControlPanel = new ControlPanel();
-        // let webGLDetectorControl = new WebGLDetectorControl(Application.ControlPanel);
-        // console.log('here!');
-        // // Application.Theater.Axes.position.add(new THREE.Vector3(1, 0, 0));
+        // Application.SubMain();
+        LoadingBlocker_1.LoadingBlocker.Show();
+        Application.Theater = new Theater_1.Theater();
+        Application.Theater.AddAxes(); // Add these for now.
+        Application.TrackballController = new TrackballController_1.TrackballController(Application.Theater);
+        Application.Miniature = new Miniature_1.Miniature(Application.Theater, Constants_1.Constants.ModelsPath, Constants_1.Constants.ObjFileName, Constants_1.Constants.MtlFileName, Application.MiniatureLoadingProgressHandler, Application.MiniatureLoadingErrorHandler, Application.MiniatureLoadingFinishedHandler);
+        Application.ControlPanel = new ControlPanel_1.ControlPanel();
+        Application.ModesControl = new ModesControl_1.ModesControl(Application.ControlPanel);
+        var scratchControl = new ScratchControl_1.ScratchControl(Application.ControlPanel);
+        scratchControl.Button.AddOnClickListener(Application.Scratch);
+        Application.SetWindowEventHandlers();
+    };
+    Application.ApplyPreferredCameraPosition = function () {
+        Application.Theater.Camera.position.copy(Application.PreferredCameraPosition.Translation);
+        Application.Theater.Camera.rotation.setFromVector3(Application.PreferredCameraPosition.Rotation);
+    };
+    Application.ApplyPreferredCoordinateSystem = function () {
+        Application.Theater.Axes.position.set(0, 0, 0);
+        Application.Theater.Axes.rotation.set(0, 0, 0);
+        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Translation);
+        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Rotation);
+    };
+    Application.MiniatureLoadingFinishedHandler = function () {
+        LoadingBlocker_1.LoadingBlocker.Hide();
+        var preferredCoordinateSystemPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
+        if (preferredCoordinateSystemPreviouslyDefined) {
+            var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCoordinateSystem();
+            Application.PreferredCoordinateSystem.Copy(loaded);
+            // Apply the preferred coordinate system.
+            Application.ApplyPreferredCoordinateSystem();
+        }
+        else {
+            // Start in the set preferred coordinate system mode.
+            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.Info);
+            Application.ModesControl.SetSelectedIndex(index);
+        }
+        var preferredCameraPositionPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCameraPositionExists();
+        if (preferredCameraPositionPreviouslyDefined) {
+            var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCameraPosition();
+            Application.PreferredCameraPosition.Copy(loaded);
+            Application.ApplyPreferredCameraPosition();
+        }
+        else {
+            // Start in the set preferred camera position mode.
+            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info);
+            Application.ModesControl.SetSelectedIndex(index);
+        }
+    };
+    Application.Scratch = function (ev) {
+        // let dbg = Application.Miniature.Geometry;
+        // Application.Miniature.Geometry.translate(5, 0, 0);
+        // Application.Miniature.Object.position.add(new THREE.Vector3(5, 0, 0));
+        // Application.TrackballController.Controls.enabled = !Application.TrackballController.Controls.enabled;
+        // let m: THREE.Matrix4 = new THREE.Matrix4();
+        // m.set(
+        //     1, 0, 0, 5,
+        //     0, 1, 0, 0,
+        //     0, 0, 1, 0,
+        //     0, 0, 0, 1
+        // );
+        // Application.Miniature.Geometry.applyMatrix(m);
+        // console.log('h1');
+        // Application.Miniature.Mesh.rotation.setFromVector3(new Vector3(0, 0, 0));
+        // Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Rotation);
+        // Application.Miniature.Mesh.position.set(3.6, -1, -6);
+        // Application.Theater.RenderActions.push(() => {
+        //     let r = Application.Miniature.Object.rotation.toVector3();
+        //     r.x += 0.05;
+        //     // r.y += 0.05;
+        //     // r.z += 0.05;
+        //     Application.Miniature.Object.rotation.setFromVector3(r);
+        // })
+        console.log(Application.Theater.Camera.position);
     };
     Application.SubMain = function () {
         Application.Theater = new Theater_1.Theater();
         Application.Theater.AddAxes(); // Add these for now.
         Application.TrackballController = new TrackballController_1.TrackballController(Application.Theater);
-        Application.Miniatures.push(new Miniature_1.Miniature(Application.Theater, Constants_1.Constants.ModelsPath, Constants_1.Constants.ObjFileName, Constants_1.Constants.MtlFileName));
+        Application.Miniature = new Miniature_1.Miniature(Application.Theater, Constants_1.Constants.ModelsPath, Constants_1.Constants.ObjFileName, Constants_1.Constants.MtlFileName);
+        Application.ControlPanel = new ControlPanel_1.ControlPanel();
+        var scratchControl = new ScratchControl_1.ScratchControl(Application.ControlPanel);
+        scratchControl.Button.AddOnClickListener(Application.Scratch);
         Application.SetWindowEventHandlers();
     };
     Application.SetWindowEventHandlers = function () {
         window.addEventListener('resize', Application.OnWindowResize);
     };
     Application.OnWindowResize = function () {
-        this.Theater.Renderer.setSize(window.innerWidth, window.innerHeight);
-        this.Theater.Camera.aspect = window.innerWidth / window.innerHeight;
-        this.Theater.Camera.updateProjectionMatrix();
+        Application.Theater.Renderer.setSize(window.innerWidth, window.innerHeight);
+        Application.Theater.Camera.aspect = window.innerWidth / window.innerHeight;
+        Application.Theater.Camera.updateProjectionMatrix();
     };
-    Application.Miniatures = [];
+    /**
+     * This is the conversion from the standard coordinate system to the preferred coordinate system.
+     *
+     * The reference is constant, change by modifying the referenced object.
+     */
+    Application.PreferredCoordinateSystem = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+    Application.PreferredCameraPosition = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+    Application.MiniatureLoadingProgressHandler = function (ev) {
+        LoadingBlocker_1.LoadingBlocker.Message = 'Loading... ' + ((ev.loaded / ev.total) * 100).toFixed(0) + '%';
+    };
+    Application.MiniatureLoadingErrorHandler = function (ev) {
+        LoadingBlocker_1.LoadingBlocker.Message = 'Error: ' + ev.message;
+    };
     return Application;
 }());
 exports.Application = Application;
@@ -50958,10 +52213,790 @@ exports.Constants = Constants;
 
 /***/ }),
 
-/***/ "./src/ts/Loading Blocker/LoadingBlocker.js":
-/*!**************************************************!*\
-  !*** ./src/ts/Loading Blocker/LoadingBlocker.js ***!
-  \**************************************************/
+/***/ "./src/ts/Controllers/AxesTransformController.js":
+/*!*******************************************************!*\
+  !*** ./src/ts/Controllers/AxesTransformController.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+__webpack_require__(/*! three/TransformControls */ "./node_modules/three/examples/js/controls/TransformControls.js");
+var AxesTransformController = /** @class */ (function () {
+    function AxesTransformController(theater) {
+        var _this = this;
+        this.Update = function () {
+            _this.Controls.update();
+        };
+        this.OnKeyDown = function (event) {
+            switch (event.keyCode) {
+                case 81: // Q
+                    _this.Controls.setSpace(_this.Controls.space === "local" ? "world" : "local");
+                    break;
+                case 17: // Ctrl
+                    _this.Controls.setTranslationSnap(100);
+                    _this.Controls.setRotationSnap(THREE.Math.degToRad(15));
+                    break;
+                case 84: // T
+                    _this.Controls.setMode("translate");
+                    break;
+                case 82: // R
+                    _this.Controls.setMode("rotate");
+                    break;
+            }
+        };
+        this.OnKeyUp = function (event) {
+            switch (event.keyCode) {
+                case 17: // Ctrl
+                    _this.Controls.setTranslationSnap(null);
+                    _this.Controls.setRotationSnap(null);
+                    break;
+            }
+        };
+        this.Controls = new THREE.TransformControls(theater.Camera, theater.OutputHtmlElement);
+        theater.Scene.add(this.Controls);
+        theater.RenderActions.push(this.Update);
+    }
+    AxesTransformController.prototype.AddInstructions = function () {
+        var instructions = document.createElement('div');
+        instructions.id = AxesTransformController.InstructionsHtmlElementId;
+        instructions.innerHTML = "\n        \"T\" translate | \"R\" rotate<br />\n        Press \"Q\" to toggle world/local space, keep \"Ctrl\" down to snap to grid\n        ";
+        document.body.appendChild(instructions);
+        this.Style = document.createElement('style');
+        document.head.appendChild(this.Style);
+        this.StyleSheet = this.Style.sheet;
+        var rule;
+        rule = "\n        position: absolute;\n        bottom: 5%;\n        width: 100%;\n        text-align: center;\n        padding: 15px;\n        z-index:100;\n        ";
+        this.StyleSheet.addRule('#' + AxesTransformController.InstructionsHtmlElementId, rule);
+    };
+    AxesTransformController.prototype.RemoveInstructions = function () {
+        var instructions = document.getElementById(AxesTransformController.InstructionsHtmlElementId);
+        if (null !== instructions) {
+            instructions.remove();
+        }
+    };
+    AxesTransformController.prototype.Attach = function (object) {
+        this.Controls.attach(object);
+        window.addEventListener('keydown', this.OnKeyDown);
+        window.addEventListener('keyup', this.OnKeyUp);
+        this.AddInstructions();
+    };
+    AxesTransformController.prototype.Detach = function () {
+        this.Controls.detach();
+        window.removeEventListener('keydown', this.OnKeyDown);
+        window.removeEventListener('keyup', this.OnKeyUp);
+        this.RemoveInstructions();
+    };
+    AxesTransformController.InstructionsHtmlElementId = 'AxesTransformControl-Instructions';
+    return AxesTransformController;
+}());
+exports.AxesTransformController = AxesTransformController;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controllers/TrackballController.js":
+/*!***************************************************!*\
+  !*** ./src/ts/Controllers/TrackballController.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+__webpack_require__(/*! three/TrackballControls */ "./node_modules/three/examples/js/controls/TrackballControls.js");
+var TrackballController = /** @class */ (function () {
+    function TrackballController(theater) {
+        var _this = this;
+        this.Controls = new THREE.TrackballControls(theater.Camera, theater.Renderer.domElement);
+        theater.RenderActions.push(function () { _this.Controls.update(); });
+    }
+    return TrackballController;
+}());
+exports.TrackballController = TrackballController;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/AxesTransformControl.js":
+/*!*************************************************!*\
+  !*** ./src/ts/Controls/AxesTransformControl.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var AxesTransformController_1 = __webpack_require__(/*! ../Controllers/AxesTransformController */ "./src/ts/Controllers/AxesTransformController.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var Modal_1 = __webpack_require__(/*! ../Modal */ "./src/ts/Modal.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var AxesTransformControl = /** @class */ (function () {
+    function AxesTransformControl(controlPanel) {
+        var _this = this;
+        this.SaveButtonOnClick = function () {
+            var additionalTranslation = Application_1.Application.Theater.Axes.position.clone();
+            var additionalRotationMatrix = new three_1.Matrix4();
+            additionalRotationMatrix.makeRotationFromEuler(Application_1.Application.Theater.Axes.rotation);
+            // We have moved the axes in the world, the world has moved oppositely from the axes.
+            additionalTranslation.negate();
+            var additionalRotationMatrixInverse = new three_1.Matrix4;
+            additionalRotationMatrixInverse.getInverse(additionalRotationMatrix);
+            // Update the preferred coordinate system.
+            // The angles must be dealt with as transformation matrices; adding the Euler angles would be wrong!
+            var currentRotationEuler = new three_1.Euler();
+            currentRotationEuler.setFromVector3(Application_1.Application.PreferredCoordinateSystem.Rotation);
+            var currentRotationMatrix = new three_1.Matrix4();
+            currentRotationMatrix.makeRotationFromEuler(currentRotationEuler);
+            var updatedRotationMatrix = currentRotationMatrix.clone();
+            updatedRotationMatrix.premultiply(additionalRotationMatrixInverse);
+            var updatedRotationEuler = new three_1.Euler();
+            updatedRotationEuler.setFromRotationMatrix(updatedRotationMatrix);
+            var updatedRotation = updatedRotationEuler.toVector3();
+            Application_1.Application.PreferredCoordinateSystem.Rotation.copy(updatedRotation);
+            // The additional translation in this coordinate system was in fact a translation in a different direction in the standard coordinate system.
+            var currentRotationMatrixInverse = new three_1.Matrix4();
+            currentRotationMatrixInverse.getInverse(currentRotationMatrix);
+            var standardSystemTranslation = additionalTranslation.clone();
+            standardSystemTranslation.applyMatrix4(currentRotationMatrixInverse);
+            Application_1.Application.PreferredCoordinateSystem.Translation.add(standardSystemTranslation);
+            // Save the updated coordinate system.
+            LocalStorageManager_1.LocalStorageManager.SavePreferredCoordinateSystem(Application_1.Application.PreferredCoordinateSystem);
+            // Finally, update the screen.
+            Application_1.Application.ApplyPreferredCoordinateSystem();
+        };
+        this.LoadButtonOnClick = function () {
+            var cs = LocalStorageManager_1.LocalStorageManager.LoadPreferredCoordinateSystem();
+            if (null !== cs) {
+                Application_1.Application.PreferredCoordinateSystem.Copy(cs);
+            }
+            Application_1.Application.ApplyPreferredCoordinateSystem();
+        };
+        this.ApplyButtonOnClick = function () {
+            // Perform one last save action.
+            _this.SaveButtonOnClick();
+        };
+        this.TransformToggleButtonOnClick = function () {
+            _this.Enable = !_this.Enable;
+        };
+        this.zController = new AxesTransformController_1.AxesTransformController(Application_1.Application.Theater);
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = AxesTransformControl.HtmlElementId;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        var title = document.createElement('p');
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Axes Transform';
+        this.HtmlElement.appendChild(title);
+        this.InstructionsButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Show Instructions');
+        this.InstructionsButton.AddOnClickListener(function () { _this.ShowInstructions(); });
+        this.TransformToggleButton = new ButtonControl_1.ButtonControl(this.HtmlElement);
+        this.TransformToggleButton.AddOnClickListener(this.TransformToggleButtonOnClick);
+        this.SaveButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Save');
+        this.SaveButton.AddOnClickListener(this.SaveButtonOnClick);
+        this.LoadButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Load');
+        this.LoadButton.AddOnClickListener(this.LoadButtonOnClick);
+        this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
+        this.ApplyButton.AddOnClickListener(this.ApplyButtonOnClick);
+        this.Enable = false;
+        this.ShowInstructions();
+    }
+    Object.defineProperty(AxesTransformControl.prototype, "Enable", {
+        get: function () {
+            return this.zEnable;
+        },
+        set: function (value) {
+            this.zEnable = value;
+            Application_1.Application.TrackballController.Controls.enabled = !this.Enable;
+            this.SetTransformToggleButtonText();
+            if (this.zEnable) {
+                this.Controller.Attach(Application_1.Application.Theater.Axes);
+                this.SaveButton.Enable();
+                this.LoadButton.Enable();
+                this.ApplyButton.Enable();
+            }
+            else {
+                this.Controller.Detach();
+                this.SaveButton.Disable();
+                this.LoadButton.Disable();
+                this.ApplyButton.Disable();
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AxesTransformControl.prototype, "Controller", {
+        get: function () {
+            return this.zController;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    AxesTransformControl.prototype.ShowInstructions = function () {
+        Modal_1.Modal.Initialize();
+        Modal_1.Modal.HeaderMessage = 'Setup Your Preferred Origin and Rotation';
+        var bodyElement = Modal_1.Modal.GetBodyHtmlElement();
+        var p1 = document.createElement('p');
+        bodyElement.appendChild(p1);
+        p1.innerHTML = 'Miniatures created via 3D reconstruction come with their own origin and rotation. Here you can set YOUR preferred origin and rotation and have this setting automatically applied the next time you view this miniature.';
+        var p2 = document.createElement('p');
+        bodyElement.appendChild(p2);
+        p2.innerHTML = 'Click <b>Enable</b> in the Axes Transform menu to move and rotate the axes. Click <b>Disable</b> to go back to moving and rotating the view.';
+        var p3 = document.createElement('p');
+        bodyElement.appendChild(p3);
+        p3.innerHTML = 'When you have placed the axes and rotated the model to provide a good alignment, click <b>Apply</b>.';
+        Modal_1.Modal.FooterMessage = 'Click outside to close';
+        Modal_1.Modal.Show();
+    };
+    AxesTransformControl.prototype.SetTransformToggleButtonText = function () {
+        if (this.Enable) {
+            this.TransformToggleButton.Text = 'Disable';
+        }
+        else {
+            this.TransformToggleButton.Text = 'Enable';
+        }
+    };
+    AxesTransformControl.HtmlElementId = 'AxesTransformControl';
+    AxesTransformControl.ButtonHtmlElementId = 'AxesTransformControl-Button';
+    return AxesTransformControl;
+}());
+exports.AxesTransformControl = AxesTransformControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/ButtonControl.js":
+/*!******************************************!*\
+  !*** ./src/ts/Controls/ButtonControl.js ***!
+  \******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ButtonControl = /** @class */ (function () {
+    function ButtonControl(parent, text, id) {
+        var _this = this;
+        this.OnClickListeners = [];
+        this.OnMouseOver = function () {
+            _this.zHtmlElement.style.backgroundColor = 'LightGray';
+        };
+        this.OnMouseLeave = function () {
+            _this.zHtmlElement.style.backgroundColor = 'inherit';
+        };
+        this.OnClick = function (ev) {
+            _this.zHtmlElement.style.backgroundColor = 'DarkGray';
+            setTimeout(function () {
+                _this.zHtmlElement.style.backgroundColor = 'inherit';
+            }, 1000);
+            _this.OnClickListeners.forEach(function (listener) {
+                var boundListener = listener.bind(_this.zHtmlElement);
+                boundListener(ev);
+            });
+        };
+        this.zHtmlElement = document.createElement('div');
+        this.zHtmlElement.className = ButtonControl.ButtonCssClassName;
+        if (text !== undefined) {
+            this.zHtmlElement.innerHTML = text;
+        }
+        if (id !== undefined) {
+            this.zHtmlElement.id = id;
+        }
+        parent.appendChild(this.HtmlElement);
+        this.Enable();
+    }
+    ButtonControl.StaticConstructor = function () {
+        ButtonControl.AddCssRules();
+    };
+    ButtonControl.AddCssRules = function () {
+        var style = document.createElement('style');
+        document.head.appendChild(style);
+        var styleSheet = style.sheet;
+        var rule;
+        rule = "\n        height: 25px;\n        line-height: 25px;\n\n        display: table;\n        margin: 0 auto;\n\n        border: 1px solid black;\n        border-radius: 11px;\n        margin-bottom: 2px;\n\n        text-align: center;\n    \n        padding-left: 10px;\n        padding-right: 10px;\n\n        user-select: none;\n        ";
+        styleSheet.addRule('.' + ButtonControl.ButtonCssClassName, rule);
+    };
+    Object.defineProperty(ButtonControl.prototype, "HtmlElement", {
+        get: function () {
+            return this.zHtmlElement;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ButtonControl.prototype, "Text", {
+        get: function () {
+            return this.zHtmlElement.innerHTML;
+        },
+        set: function (value) {
+            this.zHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ButtonControl.prototype, "Enabled", {
+        get: function () {
+            return this.zEnabled;
+        },
+        set: function (value) {
+            this.zEnabled = value;
+            if (this.zEnabled) {
+                this.AddListeners();
+                this.zHtmlElement.style.opacity = '1';
+            }
+            else {
+                this.RemoveListeners();
+                this.zHtmlElement.style.opacity = '0.3';
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ButtonControl.prototype.Enable = function () {
+        this.Enabled = true;
+    };
+    ButtonControl.prototype.Disable = function () {
+        this.Enabled = false;
+    };
+    ButtonControl.prototype.AddOnClickListener = function (listener) {
+        this.OnClickListeners.push(listener);
+    };
+    ButtonControl.prototype.RemoveOnClickListener = function (listener) {
+        var index = this.OnClickListeners.indexOf(listener);
+        if (-1 !== index) {
+            this.OnClickListeners.splice(index, 1);
+        }
+    };
+    ButtonControl.prototype.AddListeners = function () {
+        this.zHtmlElement.addEventListener('mouseover', this.OnMouseOver);
+        this.zHtmlElement.addEventListener('mouseleave', this.OnMouseLeave);
+        this.zHtmlElement.addEventListener('click', this.OnClick);
+    };
+    ButtonControl.prototype.RemoveListeners = function () {
+        this.zHtmlElement.removeEventListener('mouseover', this.OnMouseOver);
+        this.zHtmlElement.removeEventListener('mouseleave', this.OnMouseLeave);
+        this.zHtmlElement.removeEventListener('click', this.OnClick);
+    };
+    ButtonControl.ButtonCssClassName = 'ButtonControl';
+    return ButtonControl;
+}());
+exports.ButtonControl = ButtonControl;
+ButtonControl.StaticConstructor();
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/CameraTransformControl.js":
+/*!***************************************************!*\
+  !*** ./src/ts/Controls/CameraTransformControl.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var Modal_1 = __webpack_require__(/*! ../Modal */ "./src/ts/Modal.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var CameraTransformControl = /** @class */ (function () {
+    function CameraTransformControl(controlPanel) {
+        var _this = this;
+        this.OnApply = function () {
+            Application_1.Application.PreferredCameraPosition.Translation.copy(Application_1.Application.Theater.Camera.position);
+            Application_1.Application.PreferredCameraPosition.Rotation.copy(Application_1.Application.Theater.Camera.rotation.toVector3());
+            LocalStorageManager_1.LocalStorageManager.SavePreferredCameraPosition(Application_1.Application.PreferredCameraPosition);
+        };
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = CameraTransformControl.HtmlElementId;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        this.InstructionsButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Show Instructions');
+        this.InstructionsButton.AddOnClickListener(function () { _this.ShowInstructions(); });
+        this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
+        this.ApplyButton.AddOnClickListener(this.OnApply);
+        this.ShowInstructions();
+    }
+    CameraTransformControl.prototype.ShowInstructions = function () {
+        Modal_1.Modal.Initialize();
+        Modal_1.Modal.HeaderMessage = 'Setup Your Preferred Camera View';
+        var bodyElement = Modal_1.Modal.GetBodyHtmlElement();
+        var p1 = document.createElement('p');
+        bodyElement.appendChild(p1);
+        p1.innerHTML = 'Use the mouse to move until you have the view you want to save as YOUR initial view of the miniature. This setting will be automatically applied the next time you view this miniature';
+        var p2 = document.createElement('p');
+        bodyElement.appendChild(p2);
+        p2.innerHTML = 'When ready, click <b>Apply</b>.';
+        Modal_1.Modal.FooterMessage = 'Click outside to close';
+        Modal_1.Modal.Show();
+    };
+    CameraTransformControl.HtmlElementId = 'CameraTransformControl';
+    return CameraTransformControl;
+}());
+exports.CameraTransformControl = CameraTransformControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/ControlPanel.js":
+/*!*****************************************!*\
+  !*** ./src/ts/Controls/ControlPanel.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ControlPanel = /** @class */ (function () {
+    function ControlPanel() {
+        this.zHtmlElement = document.createElement('div');
+        this.zHtmlElement.id = ControlPanel.HtmlElementId;
+        document.body.appendChild(this.zHtmlElement);
+        this.Style = document.createElement('style');
+        document.head.appendChild(this.Style);
+        this.StyleSheet = this.Style.sheet;
+        this.AddCssRules();
+    }
+    Object.defineProperty(ControlPanel.prototype, "HtmlElement", {
+        get: function () {
+            return this.zHtmlElement;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ControlPanel.prototype, "message", {
+        get: function () {
+            var output = this.zHtmlElement.innerHTML;
+            return output;
+        },
+        set: function (value) {
+            this.zHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ControlPanel.prototype.AddCssRules = function () {
+        var rule;
+        rule = "\n        float: left;\n\n        position: absolute;\n        top: 50px;";
+        this.StyleSheet.addRule('#' + ControlPanel.HtmlElementId, rule);
+        rule = "\n        margin: 0;\n\n        border: 1px solid #ccc;\n\n        padding-top: 5px;\n        padding-bottom: 5px;\n    \n        text-align: center;\n\n        color: black;\n        ";
+        this.StyleSheet.addRule('.' + ControlPanel.ControlClassName, rule);
+        rule = "\n        margin: 0;\n\n        margin-bottom: 5px;\n    \n        user-select: none;\n        ";
+        this.StyleSheet.addRule('.' + ControlPanel.ControlTitleClassName, rule);
+        // rule = `
+        // height: 25px;
+        // line-height: 25px;
+        // display: table;
+        // margin: 0 auto;
+        // border: 1px solid black;
+        // border-radius: 11px;
+        // margin-bottom: 2px;
+        // text-align: center;
+        // padding-left: 10px;
+        // padding-right: 10px;
+        // user-select: none;
+        // `;
+        // this.StyleSheet.addRule('.' + ControlPanel.ControlButtonClassName, rule);
+    };
+    ControlPanel.HtmlElementId = 'ControlPanel';
+    ControlPanel.ControlClassName = 'Control';
+    ControlPanel.ControlTitleClassName = 'ControlTitle';
+    ControlPanel.ControlButtonClassName = 'ControlButton';
+    return ControlPanel;
+}());
+exports.ControlPanel = ControlPanel;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/ModesControl.js":
+/*!*****************************************!*\
+  !*** ./src/ts/Controls/ModesControl.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var ModeFactory_1 = __webpack_require__(/*! ../Modes/ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+// Allows choosing which mode will put its controls to the control panel.
+// The ModesControl should always be first in the Control Panel.
+var ModesControl = /** @class */ (function () {
+    function ModesControl(controlPanel) {
+        var _this = this;
+        this.Mode = null;
+        this.OnChange = function () {
+            var selectedIndex = _this.Select.selectedIndex;
+            var selected = _this.Select.childNodes[selectedIndex];
+            var selectedID = selected.value;
+            if (null !== _this.Mode) {
+                _this.Mode.Dispose();
+            }
+            _this.Mode = _this.ModeFactory.GetModeByID(selectedID);
+        };
+        this.ModeFactory = new ModeFactory_1.ModeFactory(controlPanel);
+        // HTML.
+        this.zHtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.zHtmlElement);
+        this.HtmlElement.id = ModesControl.HtmlElementId;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        this.Style = document.createElement('style');
+        document.head.appendChild(this.Style);
+        this.StyleSheet = this.Style.sheet;
+        var title = document.createElement('p');
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Modes';
+        this.HtmlElement.appendChild(title);
+        // Mode selector.
+        this.Select = document.createElement('select');
+        this.HtmlElement.appendChild(this.Select);
+        this.Select.id = ModesControl.SelectHtmlElementId;
+        ModeFactory_1.ModeFactory.ModeInfos.forEach(function (modeInfo) {
+            var option = document.createElement('option');
+            _this.Select.appendChild(option);
+            option.value = modeInfo.ID;
+            option.innerHTML = modeInfo.Description;
+        });
+        this.Select.onchange = this.OnChange;
+        // Perform the actions to select the default node.
+        this.OnChange();
+        // Styles.
+        this.AddCssRules();
+    }
+    Object.defineProperty(ModesControl.prototype, "HtmlElement", {
+        get: function () {
+            return this.zHtmlElement;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ModesControl.prototype.AddCssRules = function () {
+        var rule;
+        rule = "\n        width: 100px;\n        ";
+        this.StyleSheet.addRule('#' + ModesControl.HtmlElementId + ' select', rule);
+    };
+    ModesControl.prototype.SetSelectedIndex = function (index) {
+        this.Select.selectedIndex = index;
+        this.OnChange();
+    };
+    ModesControl.HtmlElementId = 'ModesControl';
+    ModesControl.SelectHtmlElementId = 'ModesControl-Select';
+    return ModesControl;
+}());
+exports.ModesControl = ModesControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/ScratchControl.js":
+/*!*******************************************!*\
+  !*** ./src/ts/Controls/ScratchControl.js ***!
+  \*******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var ScratchControl = /** @class */ (function () {
+    function ScratchControl(controlPanel) {
+        this.HtmlElement = document.createElement('div');
+        this.HtmlElement.id = ScratchControl.HtmlElementId;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        var title = document.createElement('p');
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Scratch';
+        this.HtmlElement.appendChild(title);
+        this.zButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Button', ScratchControl.ButtonHtmlElementId);
+    }
+    Object.defineProperty(ScratchControl.prototype, "message", {
+        get: function () {
+            var output = this.HtmlElement.innerHTML;
+            return output;
+        },
+        set: function (value) {
+            this.HtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ScratchControl.prototype, "Button", {
+        get: function () {
+            return this.zButton;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ScratchControl.HtmlElementId = 'ScratchControl';
+    ScratchControl.ButtonHtmlElementId = 'ScratchControl-Button';
+    return ScratchControl;
+}());
+exports.ScratchControl = ScratchControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/WebGLDetectorControl.js":
+/*!*************************************************!*\
+  !*** ./src/ts/Controls/WebGLDetectorControl.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var WebGLDetectorControl = /** @class */ (function () {
+    function WebGLDetectorControl(parentHtmlElement) {
+        this.zHtmlElement = document.createElement('div');
+        this.zHtmlElement.id = WebGLDetectorControl.HtmlElementId;
+        this.zHtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        parentHtmlElement.appendChild(this.zHtmlElement);
+        this.zOutputParagraphHtmlElement = document.createElement('div');
+        this.zOutputParagraphHtmlElement.id = WebGLDetectorControl.OutputParagraphHtmlElementId;
+        this.zHtmlElement.appendChild(this.zOutputParagraphHtmlElement);
+        // Test for the presence of WebGL.
+        var canvas = document.createElement('canvas');
+        var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        var webGLTestResult;
+        if (gl && gl instanceof WebGLRenderingContext) {
+            webGLTestResult = 'Supported';
+        }
+        else {
+            webGLTestResult = '!!! Not Supported !!!';
+        }
+        this.zOutputParagraphHtmlElement.innerHTML = 'WebGL: ' + webGLTestResult;
+    }
+    Object.defineProperty(WebGLDetectorControl.prototype, "HtmlElement", {
+        get: function () {
+            return this.zHtmlElement;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(WebGLDetectorControl.prototype, "OutputParagraphHtmlElement", {
+        get: function () {
+            return this.zOutputParagraphHtmlElement;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(WebGLDetectorControl.prototype, "message", {
+        get: function () {
+            var output = this.zHtmlElement.innerHTML;
+            return output;
+        },
+        set: function (value) {
+            this.zHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    WebGLDetectorControl.HtmlElementId = 'WebGLDetectorControl';
+    WebGLDetectorControl.OutputParagraphHtmlElementId = 'WebGLDetectorControl-OutputParagraph';
+    return WebGLDetectorControl;
+}());
+exports.WebGLDetectorControl = WebGLDetectorControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/CoordinateSystemConversion.js":
+/*!**********************************************!*\
+  !*** ./src/ts/CoordinateSystemConversion.js ***!
+  \**********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var CoordinateSystemConversion = /** @class */ (function () {
+    function CoordinateSystemConversion(translation, rotation, scale) {
+        if (translation === void 0) { translation = new three_1.Vector3(); }
+        if (rotation === void 0) { rotation = new three_1.Vector3(); }
+        if (scale === void 0) { scale = 1; }
+        this.Translation = translation;
+        this.Rotation = rotation;
+        this.Scale = scale;
+    }
+    // Returns a JS object with no frills that can be easily JSON-stringified.
+    CoordinateSystemConversion.prototype.ToObject = function () {
+        var output = {
+            Translation: {
+                x: this.Translation.x,
+                y: this.Translation.y,
+                z: this.Translation.z,
+            },
+            Rotation: {
+                x: this.Rotation.x,
+                y: this.Rotation.y,
+                z: this.Rotation.z,
+            },
+            Scale: this.Scale,
+        };
+        return output;
+    };
+    // Parses a JS object with no frills that may have come from JSON-parsing.
+    CoordinateSystemConversion.prototype.FromObject = function (object) {
+        var objTranslation = object.Translation;
+        this.Translation.set(objTranslation.x, objTranslation.y, objTranslation.z);
+        var objRotation = object.Rotation;
+        this.Rotation.set(objRotation.x, objRotation.y, objRotation.z);
+        this.Scale = object.Scale;
+    };
+    CoordinateSystemConversion.prototype.GetTransformationMatrix = function () {
+        var translation = new three_1.Matrix4();
+        translation.makeTranslation(this.Translation.x, this.Translation.y, this.Translation.z);
+        var rotation = new three_1.Matrix4();
+        var euler = new three_1.Euler(this.Rotation.x, this.Rotation.y, this.Rotation.z);
+        rotation.makeRotationFromEuler(euler);
+        var scale = new three_1.Matrix4();
+        scale.makeScale(this.Scale, this.Scale, this.Scale);
+        var output = new three_1.Matrix4();
+        output.premultiply(translation);
+        output.premultiply(rotation);
+        output.premultiply(scale);
+        return output;
+    };
+    CoordinateSystemConversion.prototype.Clone = function () {
+        return new CoordinateSystemConversion(this.Translation, this.Rotation, this.Scale);
+    };
+    CoordinateSystemConversion.prototype.Copy = function (other) {
+        this.Translation.copy(other.Translation);
+        this.Rotation.copy(other.Rotation);
+        this.Scale = other.Scale;
+    };
+    return CoordinateSystemConversion;
+}());
+exports.CoordinateSystemConversion = CoordinateSystemConversion;
+
+
+/***/ }),
+
+/***/ "./src/ts/LoadingBlocker.js":
+/*!**********************************!*\
+  !*** ./src/ts/LoadingBlocker.js ***!
+  \**********************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -50970,34 +53005,109 @@ exports.Constants = Constants;
 Object.defineProperty(exports, "__esModule", { value: true });
 var LoadingBlocker = /** @class */ (function () {
     function LoadingBlocker() {
-        this.htmlElement = document.createElement('div');
-        this.htmlElement.id = LoadingBlocker.htmlElementId;
-        document.body.appendChild(this.htmlElement);
-        this.style = document.createElement('style');
-        document.head.appendChild(this.style);
-        this.styleSheet = this.style.sheet;
-        var rule = "\n        display: block;\n        position: fixed;\n        left: 0;\n        top: 0;\n        width: 100%;\n        height: 100%;\n        overflow: auto;\n        z-index: 1;\n\n        font-family: Arial, Helvetica, sans-serif;\n        font-size: 40px;\n        line-height: 1.6;\n\n        color: black;\n        background-color: rgba(0, 0, 0, 0.5);\n\n        text-align: center;\n\n        user-select: none;\n        ";
-        this.styleSheet.addRule('#' + LoadingBlocker.htmlElementId, rule);
     }
-    Object.defineProperty(LoadingBlocker.prototype, "message", {
+    Object.defineProperty(LoadingBlocker, "Message", {
         get: function () {
-            var output = this.htmlElement.innerHTML;
+            var output = LoadingBlocker.HtmlElement.innerHTML;
             return output;
         },
         set: function (value) {
-            this.htmlElement.innerHTML = value;
+            LoadingBlocker.HtmlElement.innerHTML = value;
         },
         enumerable: true,
         configurable: true
     });
-    LoadingBlocker.prototype.remove = function () {
-        document.head.removeChild(this.style);
-        document.body.removeChild(this.htmlElement);
+    LoadingBlocker.Show = function () {
+        LoadingBlocker.HtmlElement = document.createElement('div');
+        LoadingBlocker.HtmlElement.id = LoadingBlocker.HtmlElementId;
+        document.body.appendChild(LoadingBlocker.HtmlElement);
+        LoadingBlocker.Style = document.createElement('style');
+        document.head.appendChild(LoadingBlocker.Style);
+        LoadingBlocker.StyleSheet = LoadingBlocker.Style.sheet;
+        var rule = "\n        display: block;\n        position: fixed;\n        left: 0;\n        top: 0;\n        width: 100%;\n        height: 100%;\n        overflow: auto;\n        z-index: 1;\n\n        font-family: Arial, Helvetica, sans-serif;\n        font-size: 40px;\n        line-height: 1.6;\n\n        color: black;\n        background-color: rgba(0, 0, 0, 0.5);\n\n        text-align: center;\n\n        user-select: none;\n        ";
+        LoadingBlocker.StyleSheet.addRule('#' + LoadingBlocker.HtmlElementId, rule);
     };
-    LoadingBlocker.htmlElementId = 'LoadingBlocker';
+    LoadingBlocker.Hide = function () {
+        document.head.removeChild(LoadingBlocker.Style);
+        document.body.removeChild(LoadingBlocker.HtmlElement);
+    };
+    LoadingBlocker.HtmlElementId = 'LoadingBlocker';
     return LoadingBlocker;
 }());
 exports.LoadingBlocker = LoadingBlocker;
+
+
+/***/ }),
+
+/***/ "./src/ts/LocalStorageManager.js":
+/*!***************************************!*\
+  !*** ./src/ts/LocalStorageManager.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var LocalStorageManager = /** @class */ (function () {
+    function LocalStorageManager() {
+    }
+    LocalStorageManager.PreferredCameraPositionExists = function () {
+        var output = LocalStorageManager.PreferredCameraPositionName in localStorage;
+        return output;
+    };
+    /**
+     * Loads the preferred camera position from local storage.
+     *
+     * If the value is not present, returns null.
+     */
+    LocalStorageManager.LoadPreferredCameraPosition = function () {
+        var exists = LocalStorageManager.PreferredCameraPositionExists();
+        if (!exists) {
+            return null;
+        }
+        var json = localStorage.getItem(LocalStorageManager.PreferredCameraPositionName);
+        var obj = JSON.parse(json);
+        var output = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+        output.FromObject(obj);
+        return output;
+    };
+    LocalStorageManager.SavePreferredCameraPosition = function (coordinateSystem) {
+        var obj = coordinateSystem.ToObject();
+        var json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.PreferredCameraPositionName, json);
+    };
+    LocalStorageManager.PreferredCoordinateSystemExists = function () {
+        var output = LocalStorageManager.PreferredCoordinateSystemName in localStorage;
+        return output;
+    };
+    /**
+     * Loads the preferred coordinate system conversion from local storage.
+     *
+     * If the value is not present, returns null.
+     */
+    LocalStorageManager.LoadPreferredCoordinateSystem = function () {
+        var exists = LocalStorageManager.PreferredCoordinateSystemExists();
+        if (!exists) {
+            return null;
+        }
+        var json = localStorage.getItem(LocalStorageManager.PreferredCoordinateSystemName);
+        var obj = JSON.parse(json);
+        var output = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+        output.FromObject(obj);
+        return output;
+    };
+    LocalStorageManager.SavePreferredCoordinateSystem = function (coordinateSystem) {
+        var obj = coordinateSystem.ToObject();
+        var json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.PreferredCoordinateSystemName, json);
+    };
+    LocalStorageManager.PreferredCoordinateSystemName = 'PreferredCoordinateSystem';
+    LocalStorageManager.PreferredCameraPositionName = 'PreferredCameraPosition';
+    return LocalStorageManager;
+}());
+exports.LocalStorageManager = LocalStorageManager;
 
 
 /***/ }),
@@ -51017,9 +53127,10 @@ __webpack_require__(/*! three/MTLLoader */ "./node_modules/three/examples/js/loa
 __webpack_require__(/*! three/OBJLoader */ "./node_modules/three/examples/js/loaders/OBJLoader.js");
 var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
 var Miniature = /** @class */ (function () {
-    function Miniature(theater, path, objFileName, mtlFileName, loadingProgressHandler, loadingErrorHandler) {
+    function Miniature(theater, path, objFileName, mtlFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler) {
         if (loadingProgressHandler === void 0) { loadingProgressHandler = Miniature.DefaultLoadingProgressHandler; }
         if (loadingErrorHandler === void 0) { loadingErrorHandler = Miniature.DefaultLoadingErrorHandler; }
+        if (loadingFinishedHandler === void 0) { loadingFinishedHandler = Miniature.DefaultLoadingFinishedHandler; }
         var _this = this;
         this.Center = new THREE.Vector3(0, 0, 0);
         this.Scale = new THREE.Vector3(0, 0, 0);
@@ -51027,7 +53138,7 @@ var Miniature = /** @class */ (function () {
         this.Theater = theater;
         var materialLoader = new THREE.MTLLoader();
         materialLoader.setPath(path);
-        materialLoader.load(mtlFileName, function (materials) { _this.MaterialOnLoad(materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler); }, loadingProgressHandler, loadingErrorHandler);
+        materialLoader.load(mtlFileName, function (materials) { _this.MaterialOnLoad(materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler); }, loadingProgressHandler, loadingErrorHandler);
     }
     Miniature.DefaultLoadingProgressHandler = function (xhr) {
         var message = (xhr.loaded / xhr.total * 100) + '% loaded';
@@ -51037,10 +53148,11 @@ var Miniature = /** @class */ (function () {
         console.log('An error occurred.');
         console.log(err);
     };
-    Miniature.prototype.MaterialOnLoad = function (materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler) {
+    Miniature.DefaultLoadingFinishedHandler = function () {
+        console.log('Finished loading.');
+    };
+    Miniature.prototype.MaterialOnLoad = function (materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler) {
         var _this = this;
-        if (loadingProgressHandler === void 0) { loadingProgressHandler = Miniature.DefaultLoadingProgressHandler; }
-        if (loadingErrorHandler === void 0) { loadingErrorHandler = Miniature.DefaultLoadingErrorHandler; }
         materials.preload();
         // Make all materials double-sided so they may be seen from any direction.
         Object.keys(materials.materials).forEach(function (key) {
@@ -51050,13 +53162,13 @@ var Miniature = /** @class */ (function () {
         var objLoader = new THREE.OBJLoader();
         objLoader.setMaterials(materials);
         objLoader.setPath(path);
-        objLoader.load(objFileName, function (object) { _this.ObjectOnLoad(object, theater); }, 
+        objLoader.load(objFileName, function (object) { _this.ObjectOnLoad(object, theater, loadingFinishedHandler); }, 
         // Called when loading is in progress.
         loadingProgressHandler, 
         // Called when an error occurs during loading.
         loadingErrorHandler);
     };
-    Miniature.prototype.ObjectOnLoad = function (object, theater) {
+    Miniature.prototype.ObjectOnLoad = function (object, theater, loadingFinishedHandler) {
         this.Object = object;
         theater.Scene.add(object);
         this.Mesh = object.children[0];
@@ -51065,8 +53177,9 @@ var Miniature = /** @class */ (function () {
         this.Radius = this.Geometry.boundingSphere.radius;
         this.Center.copy(this.Geometry.boundingSphere.center);
         this.Geometry.computeBoundingBox();
-        this.ComputeScaleAndOffset();
-        this.PositionObject();
+        loadingFinishedHandler();
+        // this.ComputeScaleAndOffset();
+        // this.PositionObject();
     };
     // Position the loaded object in the center of the screen.
     Miniature.prototype.PositionObject = function () {
@@ -51084,6 +53197,477 @@ var Miniature = /** @class */ (function () {
     return Miniature;
 }());
 exports.Miniature = Miniature;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modal.js":
+/*!*************************!*\
+  !*** ./src/ts/Modal.js ***!
+  \*************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * A static class for showing and hiding a modal.
+ *
+ * To use, call Initialize() first, then add whatever messages you want displayed, then call Show().
+ */
+var Modal = /** @class */ (function () {
+    function Modal() {
+    }
+    Object.defineProperty(Modal, "HeaderMessage", {
+        get: function () {
+            return Modal.HeaderMessageHtmlElement.innerHTML;
+        },
+        set: function (value) {
+            Modal.HeaderMessageHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Modal.GetBodyHtmlElement = function () {
+        return Modal.BodyHtmlElement;
+    };
+    Object.defineProperty(Modal, "BodyMessage", {
+        get: function () {
+            return Modal.BodyHtmlElement.innerHTML;
+        },
+        set: function (value) {
+            Modal.BodyHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Modal, "FooterMessage", {
+        get: function () {
+            return Modal.FooterMessageHtmlElement.innerHTML;
+        },
+        set: function (value) {
+            Modal.FooterMessageHtmlElement.innerHTML = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Modal.Initialize = function () {
+        Modal.BuildHtml();
+        Modal.AddStyle();
+        Modal.WireEvents();
+    };
+    Modal.Show = function () {
+        Modal.RootHtmlElement.style.display = 'block';
+    };
+    Modal.Hide = function () {
+        Modal.RootHtmlElement.remove();
+        Modal.Style.remove();
+        window.removeEventListener('click', Modal.OnOutsideClick);
+    };
+    Modal.WireEvents = function () {
+        // Listen for the inside close button click.
+        Modal.CloseButtonHtmlElement.addEventListener('click', function () { Modal.Hide(); });
+        // Listen for the outside close click.
+        window.addEventListener('click', Modal.OnOutsideClick);
+    };
+    /**
+     * Builds the HTML element tree.
+     */
+    Modal.BuildHtml = function () {
+        Modal.RootHtmlElement = document.createElement('div');
+        document.body.appendChild(Modal.RootHtmlElement);
+        Modal.RootHtmlElement.id = Modal.RootHtmlElementID;
+        var content = document.createElement('div');
+        Modal.RootHtmlElement.appendChild(content);
+        content.id = Modal.ContentHtmlElementID;
+        var header = document.createElement('div');
+        content.appendChild(header);
+        header.id = Modal.HeaderHtmlElementID;
+        Modal.CloseButtonHtmlElement = document.createElement('span');
+        header.appendChild(Modal.CloseButtonHtmlElement);
+        Modal.CloseButtonHtmlElement.id = Modal.CloseButtonHtmlElementID;
+        Modal.CloseButtonHtmlElement.innerHTML = '&times;';
+        Modal.HeaderMessageHtmlElement = document.createElement('h2');
+        header.appendChild(Modal.HeaderMessageHtmlElement);
+        Modal.BodyHtmlElement = document.createElement('div');
+        content.appendChild(Modal.BodyHtmlElement);
+        Modal.BodyHtmlElement.id = Modal.BodyHtmlElementID;
+        var footer = document.createElement('div');
+        content.appendChild(footer);
+        footer.id = Modal.FooterHtmlElementID;
+        Modal.FooterMessageHtmlElement = document.createElement('h3');
+        footer.appendChild(Modal.FooterMessageHtmlElement);
+    };
+    /**
+     * Adds the CSS styling for all elements.
+     */
+    Modal.AddStyle = function () {
+        Modal.Style = document.createElement('style');
+        document.head.appendChild(Modal.Style);
+        Modal.StyleSheet = Modal.Style.sheet;
+        var rule;
+        rule = "\n        display: none;\n        position: fixed;\n        z-index: 1;\n        left: 0;\n        top: 0;\n        height: 100%;\n        width: 100%;\n        overflow: auto;\n        background-color: rgba(0, 0, 0, 0.5);\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.RootHtmlElementID, rule);
+        rule = "\n        background-color: #f4f4f4;\n        margin: 20% auto;\n        width: 70%;\n        box-shadow: 0 5px 8px 0 rgba(0, 0, 0, 0.2), 0 7px 20px 0 rgba(0, 0, 0, 0.17);\n\n        animation-name: modalOpen;\n        animation-duration: 1s;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.ContentHtmlElementID, rule);
+        rule = "\n        background: coral;\n        padding: 15px;\n        color: white;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.HeaderHtmlElementID, rule);
+        rule = "\n        margin: 0;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.HeaderHtmlElementID + ' h2', rule);
+        rule = "\n        padding: 10px 20px;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.BodyHtmlElementID, rule);
+        rule = "\n        background: coral;\n        padding: 10px;\n        color: white;\n        text-align: center;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.FooterHtmlElementID, rule);
+        rule = "\n        margin: 0;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.FooterHtmlElementID + ' h3', rule);
+        rule = "\n        color: white;\n        float: right;\n        font-size: 30px;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.CloseButtonHtmlElementID, rule);
+        rule = "\n        color: black;\n        text-decoration: none;\n        cursor: pointer;\n        ";
+        Modal.StyleSheet.addRule('#' + Modal.CloseButtonHtmlElementID + ':hover' + ', ' + '#' + Modal.CloseButtonHtmlElementID + ':focus', rule);
+        rule = "\n        from{ opacity: 0}\n        to {opacity: 1}\n        ";
+        Modal.StyleSheet.addRule('@keyframes modalOpen', rule);
+    };
+    Modal.RootHtmlElementID = 'Modal-Root';
+    Modal.ContentHtmlElementID = 'Modal-Content';
+    Modal.HeaderHtmlElementID = 'Modal-Header';
+    Modal.CloseButtonHtmlElementID = 'Modal-CloseButton';
+    Modal.BodyHtmlElementID = 'Modal-Body';
+    Modal.FooterHtmlElementID = 'Modal-Footer';
+    Modal.OnOutsideClick = function (ev) {
+        if (ev.target === Modal.RootHtmlElement) {
+            Modal.Hide();
+        }
+    };
+    return Modal;
+}());
+exports.Modal = Modal;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/InfoMode.js":
+/*!**********************************!*\
+  !*** ./src/ts/Modes/InfoMode.js ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var WebGLDetectorControl_1 = __webpack_require__(/*! ../Controls/WebGLDetectorControl */ "./src/ts/Controls/WebGLDetectorControl.js");
+var InfoMode = /** @class */ (function () {
+    function InfoMode(controlPanel) {
+        this.WebGLDetectorControl = new WebGLDetectorControl_1.WebGLDetectorControl(controlPanel.HtmlElement);
+    }
+    Object.defineProperty(InfoMode.prototype, "ModeInfo", {
+        get: function () {
+            return InfoMode.Info;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    InfoMode.prototype.Dispose = function () {
+        this.WebGLDetectorControl.HtmlElement.remove();
+    };
+    InfoMode.ID = 'info';
+    InfoMode.Description = 'Info';
+    InfoMode.Info = new Mode_1.ModeInfo(InfoMode.ID, InfoMode.Description);
+    return InfoMode;
+}());
+exports.InfoMode = InfoMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/Mode.js":
+/*!******************************!*\
+  !*** ./src/ts/Modes/Mode.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ModeInfo = /** @class */ (function () {
+    function ModeInfo(id, description) {
+        this.zID = id;
+        this.zDescription = description;
+    }
+    Object.defineProperty(ModeInfo.prototype, "ID", {
+        get: function () {
+            return this.zID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ModeInfo.prototype, "Description", {
+        get: function () {
+            return this.zDescription;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return ModeInfo;
+}());
+exports.ModeInfo = ModeInfo;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/ModeFactory.js":
+/*!*************************************!*\
+  !*** ./src/ts/Modes/ModeFactory.js ***!
+  \*************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var InfoMode_1 = __webpack_require__(/*! ./InfoMode */ "./src/ts/Modes/InfoMode.js");
+var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var NoneMode_1 = __webpack_require__(/*! ./NoneMode */ "./src/ts/Modes/NoneMode.js");
+var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
+var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
+var ModeFactory = /** @class */ (function () {
+    function ModeFactory(controlPanel) {
+        this.ControlPanel = controlPanel;
+    }
+    ModeFactory.GetIndexOfModeByModeInfo = function (modeInfo) {
+        var output = ModeFactory.GetIndexOfModeByModeID(modeInfo.ID);
+        return output;
+    };
+    ModeFactory.GetIndexOfModeByModeID = function (id) {
+        for (var iMode = 0; iMode < ModeFactory.ModeInfos.length; iMode++) {
+            var element = ModeFactory.ModeInfos[iMode];
+            if (element.ID == id) {
+                return iMode;
+            }
+        }
+    };
+    ModeFactory.prototype.GetModeByID = function (id) {
+        var output;
+        switch (id) {
+            case InfoMode_1.InfoMode.ID:
+                output = new InfoMode_1.InfoMode(this.ControlPanel);
+                break;
+            case SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.ID:
+                output = new SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode(this.ControlPanel);
+                break;
+            case SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.ID:
+                output = new SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode(this.ControlPanel);
+                break;
+            case NoneMode_1.NoneMode.ID:
+            default:
+                output = new NoneMode_1.NoneMode();
+                break;
+        }
+        return output;
+    };
+    ModeFactory.prototype.GetModeByModeInfo = function (modeInfo) {
+        var output = this.GetModeByID(modeInfo.ID);
+        return output;
+    };
+    ModeFactory.ModeInfos = [
+        NoneMode_1.NoneMode.Info,
+        InfoMode_1.InfoMode.Info,
+        SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.Info,
+        SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info,
+        new Mode_1.ModeInfo('annotate', 'Annotate'),
+    ];
+    return ModeFactory;
+}());
+exports.ModeFactory = ModeFactory;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/NoneMode.js":
+/*!**********************************!*\
+  !*** ./src/ts/Modes/NoneMode.js ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var NoneMode = /** @class */ (function () {
+    function NoneMode() {
+    }
+    Object.defineProperty(NoneMode.prototype, "ModeInfo", {
+        get: function () {
+            return NoneMode.Info;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    NoneMode.prototype.Dispose = function () {
+        // Do nothing.
+    };
+    NoneMode.ID = 'none';
+    NoneMode.Description = 'None';
+    NoneMode.Info = new Mode_1.ModeInfo(NoneMode.ID, NoneMode.Description);
+    return NoneMode;
+}());
+exports.NoneMode = NoneMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SetPreferredCameraPositionMode.js":
+/*!********************************************************!*\
+  !*** ./src/ts/Modes/SetPreferredCameraPositionMode.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var CameraTransformControl_1 = __webpack_require__(/*! ../Controls/CameraTransformControl */ "./src/ts/Controls/CameraTransformControl.js");
+var ModeFactory_1 = __webpack_require__(/*! ./ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var NoneMode_1 = __webpack_require__(/*! ./NoneMode */ "./src/ts/Modes/NoneMode.js");
+var SetPreferredCameraPositionMode = /** @class */ (function () {
+    function SetPreferredCameraPositionMode(controlPanel) {
+        var _this = this;
+        this.OnApply = function () {
+            _this.Dispose();
+            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(NoneMode_1.NoneMode.Info);
+            Application_1.Application.ModesControl.SetSelectedIndex(index);
+        };
+        this.CameraTransformControl = new CameraTransformControl_1.CameraTransformControl(controlPanel);
+        this.CameraTransformControl.ApplyButton.AddOnClickListener(this.OnApply);
+    }
+    Object.defineProperty(SetPreferredCameraPositionMode.prototype, "ModeInfo", {
+        get: function () {
+            return SetPreferredCameraPositionMode.Info;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetPreferredCameraPositionMode.prototype.Dispose = function () {
+        this.CameraTransformControl.HtmlElement.remove();
+    };
+    SetPreferredCameraPositionMode.ID = 'setPreferredCameraPosition';
+    SetPreferredCameraPositionMode.Description = 'Set Preferred Camera Position';
+    SetPreferredCameraPositionMode.Info = new Mode_1.ModeInfo(SetPreferredCameraPositionMode.ID, SetPreferredCameraPositionMode.Description);
+    return SetPreferredCameraPositionMode;
+}());
+exports.SetPreferredCameraPositionMode = SetPreferredCameraPositionMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js":
+/*!**********************************************************!*\
+  !*** ./src/ts/Modes/SetPreferredCoordinateSystemMode.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var AxesTransformControl_1 = __webpack_require__(/*! ../Controls/AxesTransformControl */ "./src/ts/Controls/AxesTransformControl.js");
+var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var ModeFactory_1 = __webpack_require__(/*! ./ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
+var SetPreferredCoordinateSystemMode = /** @class */ (function () {
+    function SetPreferredCoordinateSystemMode(controlPanel) {
+        var _this = this;
+        this.OnApply = function () {
+            // Tear down the axes transform control and move to the next mode, if the next mode has not been setup.
+            _this.Dispose();
+            var preferredCameraPositionPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
+            if (preferredCameraPositionPreviouslyDefined) {
+                var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCameraPosition();
+                Application_1.Application.PreferredCameraPosition.copy(loaded);
+                // Apply the preferred coordinate system.
+                Application_1.Application.ApplyPreferredCoordinateSystem();
+            }
+            else {
+                // Start in the set preferred coordinate system mode.
+                var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info);
+                Application_1.Application.ModesControl.SetSelectedIndex(index);
+            }
+        };
+        this.AxesHelper = Application_1.Application.Theater.Axes;
+        this.Startup();
+        this.AxesTransformControl = new AxesTransformControl_1.AxesTransformControl(controlPanel);
+        this.AxesTransformControl.ApplyButton.AddOnClickListener(this.OnApply);
+        this.DatGUI = new dat.GUI();
+        this.ConfigureDatGui();
+    }
+    Object.defineProperty(SetPreferredCoordinateSystemMode.prototype, "ModeInfo", {
+        get: function () {
+            return SetPreferredCoordinateSystemMode.Info;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetPreferredCoordinateSystemMode.prototype.ConfigureDatGui = function () {
+        var translationFolder = this.DatGUI.addFolder('Translation');
+        translationFolder.open();
+        var translateX = translationFolder.add(this.AxesHelper.position, 'x', this.AxesMovementBoundingBox.min.x, this.AxesMovementBoundingBox.max.x);
+        translateX.listen();
+        var translateY = translationFolder.add(this.AxesHelper.position, 'y', this.AxesMovementBoundingBox.min.y, this.AxesMovementBoundingBox.max.y);
+        translateY.listen();
+        var translateZ = translationFolder.add(this.AxesHelper.position, 'z', this.AxesMovementBoundingBox.min.z, this.AxesMovementBoundingBox.max.z);
+        translateZ.listen();
+        var rotationFolder = this.DatGUI.addFolder('Rotation');
+        rotationFolder.open();
+        var rotateX = rotationFolder.add(this.AxesHelper.rotation, 'x', -2 * Math.PI, 2 * Math.PI);
+        rotateX.listen();
+        var rotateY = rotationFolder.add(this.AxesHelper.rotation, 'y', -2 * Math.PI, 2 * Math.PI);
+        rotateY.listen();
+        var rotateZ = rotationFolder.add(this.AxesHelper.rotation, 'z', -2 * Math.PI, 2 * Math.PI);
+        rotateZ.listen();
+    };
+    SetPreferredCoordinateSystemMode.prototype.Dispose = function () {
+        this.AxesTransformControl.HtmlElement.remove();
+        this.DatGUI.destroy();
+    };
+    SetPreferredCoordinateSystemMode.prototype.Startup = function () {
+        // Determine a range for the dat.GUI controls that is helpful (a box centered on the miniature's bounding box's center, sized at twice the with in each dimension.      
+        var boundingBox = Application_1.Application.Miniature.Geometry.boundingBox;
+        var xWidth = boundingBox.max.x - boundingBox.min.x;
+        var yWidth = boundingBox.max.y - boundingBox.min.y;
+        var zWidth = boundingBox.max.z - boundingBox.min.z;
+        var center = new THREE.Vector3(boundingBox.min.x + xWidth / 2, boundingBox.min.y + yWidth / 2, boundingBox.min.z + zWidth / 2);
+        var min = new THREE.Vector3(center.x - xWidth, center.y - yWidth, center.z - zWidth);
+        var max = new THREE.Vector3(center.x + xWidth, center.y + yWidth, center.z + zWidth);
+        this.AxesMovementBoundingBox = new THREE.Box3(min, max);
+        // Set the initial position of the axes to something reasonable if there is no saved axes position.
+        var present = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
+        if (!present) {
+            // Set the position to be at the center of the bounding box.
+            this.AxesHelper.position.copy(center);
+            // Make the camera look at the center of the bounding box so we can see our model!
+            // Note: cannot use camera.lookAt() when a TrackballControl is engaged. Need to use the controls directly.
+            Application_1.Application.TrackballController.Controls.target.copy(center);
+        }
+    };
+    SetPreferredCoordinateSystemMode.ID = 'setPreferredCoordinateSystem';
+    SetPreferredCoordinateSystemMode.Description = 'Set Preferred Coordinate System';
+    SetPreferredCoordinateSystemMode.Info = new Mode_1.ModeInfo(SetPreferredCoordinateSystemMode.ID, SetPreferredCoordinateSystemMode.Description);
+    return SetPreferredCoordinateSystemMode;
+}());
+exports.SetPreferredCoordinateSystemMode = SetPreferredCoordinateSystemMode;
 
 
 /***/ }),
@@ -51106,6 +53690,9 @@ var Theater = /** @class */ (function () {
         this.Scene = new THREE.Scene();
         this.Camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.Camera.position.set(Constants_1.Constants.ModestDistance, Constants_1.Constants.ModestDistance, Constants_1.Constants.ModestDistance);
+        // this.Camera.position.set( Constants.ModestDistance, 0, 0);
+        // this.Camera.position.set(0, Constants.ModestDistance, 0);
+        // this.Camera.position.set(0, 0, Constants.ModestDistance);
         this.Camera.lookAt(0, 0, 0);
         this.Scene.add(this.Camera);
         this.Renderer = new THREE.WebGLRenderer();
@@ -51140,31 +53727,6 @@ exports.Theater = Theater;
 
 /***/ }),
 
-/***/ "./src/ts/TrackballController.js":
-/*!***************************************!*\
-  !*** ./src/ts/TrackballController.js ***!
-  \***************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-__webpack_require__(/*! three/TrackballControls */ "./node_modules/three/examples/js/controls/TrackballControls.js");
-var TrackballController = /** @class */ (function () {
-    function TrackballController(theater) {
-        var _this = this;
-        this.Controls = new THREE.TrackballControls(theater.Camera, theater.Renderer.domElement);
-        theater.RenderActions.push(function () { _this.Controls.update(); });
-    }
-    return TrackballController;
-}());
-exports.TrackballController = TrackballController;
-
-
-/***/ }),
-
 /***/ "./src/ts/index.js":
 /*!*************************!*\
   !*** ./src/ts/index.js ***!
@@ -51178,7 +53740,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var DATGUI_Workaround = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
 var dat = DATGUI_Workaround.default;
 var Application_1 = __webpack_require__(/*! ./Application */ "./src/ts/Application.js");
-var LoadingBlocker_1 = __webpack_require__(/*! ./Loading Blocker/LoadingBlocker */ "./src/ts/Loading Blocker/LoadingBlocker.js");
+var LoadingBlocker_1 = __webpack_require__(/*! ./LoadingBlocker */ "./src/ts/LoadingBlocker.js");
 var Startup = /** @class */ (function () {
     function Startup() {
     }
@@ -51190,7 +53752,6 @@ var Startup = /** @class */ (function () {
         Application_1.Application.Main();
     };
     Startup.testDatGui = function () {
-        console.log('1');
         var outputTextElement = document.createElement('h1');
         document.body.appendChild(outputTextElement);
         var controlValues = new Object();

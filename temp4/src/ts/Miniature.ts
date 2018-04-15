@@ -4,6 +4,8 @@ import 'three/OBJLoader';
 
 import { Constants } from './Constants';
 import { Theater } from "./Theater";
+import { LocalStorageManager } from './LocalStorageManager';
+import { Application } from './Application';
 
 
 export class Miniature {
@@ -15,6 +17,10 @@ export class Miniature {
     public static DefaultLoadingErrorHandler(err: ErrorEvent) {
         console.log('An error occurred.');
         console.log(err);
+    }
+
+    public static DefaultLoadingFinishedHandler() {
+        console.log('Finished loading.');
     }
 
 
@@ -30,22 +36,24 @@ export class Miniature {
 
     public constructor(theater: Theater, path: string, objFileName: string, mtlFileName: string,
         loadingProgressHandler: (xhr: ProgressEvent) => void = Miniature.DefaultLoadingProgressHandler,
-        loadingErrorHandler: (err: ErrorEvent) => void = Miniature.DefaultLoadingErrorHandler
+        loadingErrorHandler: (err: ErrorEvent) => void = Miniature.DefaultLoadingErrorHandler,
+        loadingFinishedHandler: () => void = Miniature.DefaultLoadingFinishedHandler,
     ) {
         this.Theater = theater;
 
         let materialLoader = new THREE.MTLLoader();
         materialLoader.setPath(path);
         materialLoader.load(mtlFileName,
-            (materials) => { this.MaterialOnLoad(materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler); },
+            (materials) => { this.MaterialOnLoad(materials, theater, path, objFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler); },
             loadingProgressHandler,
             loadingErrorHandler
         );
     }
 
     private MaterialOnLoad(materials: THREE.MaterialCreator, theater: Theater, path: string, objFileName: string,
-        loadingProgressHandler: (xhr: ProgressEvent) => void = Miniature.DefaultLoadingProgressHandler,
-        loadingErrorHandler: (err: ErrorEvent) => void = Miniature.DefaultLoadingErrorHandler
+        loadingProgressHandler: (xhr: ProgressEvent) => void,
+        loadingErrorHandler: (err: ErrorEvent) => void,
+        loadingFinishedHandler: () => void,
     ) {
         materials.preload();
 
@@ -59,7 +67,7 @@ export class Miniature {
         objLoader.setMaterials(materials);
         objLoader.setPath(path);
         objLoader.load(objFileName,
-            (object) => { this.ObjectOnLoad(object, theater); },
+            (object) => { this.ObjectOnLoad(object, theater, loadingFinishedHandler); },
             // Called when loading is in progress.
             loadingProgressHandler,
             // Called when an error occurs during loading.
@@ -67,7 +75,9 @@ export class Miniature {
         );
     }
 
-    private ObjectOnLoad(object: THREE.Group, theater: Theater) {
+    private ObjectOnLoad(object: THREE.Group, theater: Theater,
+        loadingFinishedHandler: () => void,
+    ) {
         this.Object = object;
         theater.Scene.add(object);
 
@@ -80,9 +90,11 @@ export class Miniature {
 
         this.Geometry.computeBoundingBox();
 
-        this.ComputeScaleAndOffset();
+        loadingFinishedHandler();
 
-        this.PositionObject();
+        // this.ComputeScaleAndOffset();
+
+        // this.PositionObject();
     }
 
     // Position the loaded object in the center of the screen.

@@ -1,6 +1,8 @@
 export class ControlPanel {
     public static readonly HtmlElementId = 'ControlPanel';
     public static readonly ControlClassName = 'Control';
+    public static readonly ControlTitleClassName = 'ControlTitle';
+    public static readonly ControlButtonClassName = 'ControlButton';
 
 
     private readonly zHtmlElement: HTMLDivElement;
@@ -32,27 +34,6 @@ export class ControlPanel {
 
     private AddCssRules(): void {
         let rule: string;
-        // rule = `
-        // display: inline-block;
-        // float: left;
-        // clear: left;
-
-        // position: relative;
-        // top: 50px; /* Clear the FPS counter. */
-
-        // font-size: 12px;
-        // `;
-        // this.StyleSheet.addRule('#' + ControlPanel.HtmlElementId, rule);
-
-        // rule = `
-        // margin: 0;
-
-        // padding-top: 5px;
-        // padding-bottom: 5px;
-
-        // text-align: center;
-        // `;
-        // this.StyleSheet.addRule('.' + ControlPanel.ControlClassName + ' p', rule);
 
         rule = `
         float: left;
@@ -74,5 +55,34 @@ export class ControlPanel {
         color: black;
         `;
         this.StyleSheet.addRule('.' + ControlPanel.ControlClassName, rule);
+
+        rule = `
+        margin: 0;
+
+        margin-bottom: 5px;
+    
+        user-select: none;
+        `;
+        this.StyleSheet.addRule('.' + ControlPanel.ControlTitleClassName, rule);
+
+        // rule = `
+        // height: 25px;
+        // line-height: 25px;
+
+        // display: table;
+        // margin: 0 auto;
+
+        // border: 1px solid black;
+        // border-radius: 11px;
+        // margin-bottom: 2px;
+
+        // text-align: center;
+    
+        // padding-left: 10px;
+        // padding-right: 10px;
+
+        // user-select: none;
+        // `;
+        // this.StyleSheet.addRule('.' + ControlPanel.ControlButtonClassName, rule);
     }
 }

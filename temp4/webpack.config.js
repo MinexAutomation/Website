@@ -23,6 +23,7 @@ module.exports = {
             'three/MTLLoader': path.join(__dirname, 'node_modules/three/examples/js/loaders/MTLLoader.js'),
             'three/OBJLoader': path.join(__dirname, 'node_modules/three/examples/js/loaders/OBJLoader.js'),
             'three/TrackballControls': path.join(__dirname, 'node_modules/three/examples/js/controls/TrackballControls.js'),
+            'three/TransformControls': path.join(__dirname, 'node_modules/three/examples/js/controls/TransformControls.js'),
         }
     },
     plugins:[

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import 'three/TrackballControls';
 
-import { Theater } from "./Theater";
+import { Theater } from "../Theater";
 
 
 export class TrackballController {

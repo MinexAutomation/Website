@@ -20,6 +20,9 @@ export class Theater {
 
         this.Camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.Camera.position.set(Constants.ModestDistance, Constants.ModestDistance, Constants.ModestDistance);
+        // this.Camera.position.set( Constants.ModestDistance, 0, 0);
+        // this.Camera.position.set(0, Constants.ModestDistance, 0);
+        // this.Camera.position.set(0, 0, Constants.ModestDistance);
         this.Camera.lookAt(0, 0, 0);
         this.Scene.add(this.Camera);
 

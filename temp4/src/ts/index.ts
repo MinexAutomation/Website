@@ -3,7 +3,7 @@ const dat = (<any>DATGUI_Workaround).default;
 
 import { Application } from "./Application";
 import { DynamicHtml } from "./DynamicHTML";
-import { LoadingBlocker } from "./Loading Blocker/LoadingBlocker";
+import { LoadingBlocker } from "./LoadingBlocker";
 import { ModelInitialization } from "./ModelInitialization";
 
 
@@ -17,7 +17,6 @@ class Startup {
     }
 
     private static testDatGui() {
-        console.log('1');
         let outputTextElement = document.createElement('h1');
         document.body.appendChild(outputTextElement);
 

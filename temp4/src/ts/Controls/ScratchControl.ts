@@ -3,8 +3,8 @@ import { ButtonControl } from "./ButtonControl";
 
 
 export class ScratchControl {
-    public static readonly HtmlElementId = 'ScratchControl'
-    public static readonly ButtonHtmlElementId = 'ScratchControl-Button'
+    public static readonly HtmlElementID = 'ScratchControl'
+    public static readonly ButtonHtmlElementID = 'ScratchControl-Button'
 
 
     private readonly HtmlElement: HTMLDivElement;
@@ -23,15 +23,15 @@ export class ScratchControl {
 
     public constructor(controlPanel: ControlPanel) {
         this.HtmlElement = document.createElement('div');
-        this.HtmlElement.id = ScratchControl.HtmlElementId;
-        this.HtmlElement.className = ControlPanel.ControlClassName;
         controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = ScratchControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel.ControlClassName;
 
         let title = document.createElement('p');
+        this.HtmlElement.appendChild(title);
         title.className = ControlPanel.ControlTitleClassName;
         title.innerHTML = 'Scratch';
-        this.HtmlElement.appendChild(title);
 
-        this.zButton = new ButtonControl(this.HtmlElement, 'Button', ScratchControl.ButtonHtmlElementId);
+        this.zButton = new ButtonControl(this.HtmlElement, 'Button', ScratchControl.ButtonHtmlElementID);
     }
 }

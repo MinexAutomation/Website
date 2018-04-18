@@ -2,23 +2,26 @@ import * as THREE from "three";
 import * as wDatGui from "dat.gui";
 const dat = (<any>wDatGui).default; // Workaround.
 
+import { ISignalEvent, SignalEvent } from "../Common/Events/SignalEvent";
+
 import { Application } from "../Application";
 import { AxesTransformControl } from "../Controls/AxesTransformControl";
 import { ControlPanel } from "../Controls/ControlPanel";
 import { ModeInfo, IMode } from "./Mode";
 import { LocalStorageManager } from "../LocalStorageManager";
 import { ModeFactory } from "./ModeFactory";
-import { SetPreferredCameraPositionMode } from "./SetPreferredCameraPositionMode";
 
 
 export class SetPreferredCoordinateSystemMode implements IMode {
     public static readonly ID: string = 'setPreferredCoordinateSystem';
-    public static readonly Description: string = 'Set Preferred Coordinate System';
-    public static readonly Info: ModeInfo = new ModeInfo(SetPreferredCoordinateSystemMode.ID, SetPreferredCoordinateSystemMode.Description);
 
 
-    public get ModeInfo(): ModeInfo {
-        return SetPreferredCoordinateSystemMode.Info;
+    public get ID(): string {
+        return SetPreferredCoordinateSystemMode.ID;
+    }
+    private zDisposed: SignalEvent = new SignalEvent();
+    public get Disposed(): ISignalEvent {
+        return this.zDisposed.AsEvent();
     }
     private readonly AxesTransformControl: AxesTransformControl;
     private readonly DatGUI: dat.GUI;
@@ -32,7 +35,6 @@ export class SetPreferredCoordinateSystemMode implements IMode {
         this.Startup();
 
         this.AxesTransformControl = new AxesTransformControl(controlPanel);
-        this.AxesTransformControl.ApplyButton.AddOnClickListener(this.OnApply)
 
         this.DatGUI = new dat.GUI();
         this.ConfigureDatGui();
@@ -67,6 +69,7 @@ export class SetPreferredCoordinateSystemMode implements IMode {
     public Dispose(): void {
         this.AxesTransformControl.HtmlElement.remove();
         this.DatGUI.destroy();
+        this.zDisposed.Dispatch();
     }
 
     private Startup(): void {
@@ -91,24 +94,6 @@ export class SetPreferredCoordinateSystemMode implements IMode {
             // Make the camera look at the center of the bounding box so we can see our model!
             // Note: cannot use camera.lookAt() when a TrackballControl is engaged. Need to use the controls directly.
             Application.TrackballController.Controls.target.copy(center);
-        }
-    }
-
-    private OnApply = () => {
-        // Tear down the axes transform control and move to the next mode, if the next mode has not been setup.
-        this.Dispose();
-
-        let preferredCameraPositionPreviouslyDefined = LocalStorageManager.PreferredCoordinateSystemExists();
-        if (preferredCameraPositionPreviouslyDefined) {
-            let loaded = LocalStorageManager.LoadPreferredCameraPosition();
-            Application.PreferredCameraPosition.copy(loaded);
-
-            // Apply the preferred coordinate system.
-            Application.ApplyPreferredCoordinateSystem();
-        } else {
-            // Start in the set preferred coordinate system mode.
-            let index = ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode.Info);
-            Application.ModesControl.SetSelectedIndex(index);
         }
     }
 }

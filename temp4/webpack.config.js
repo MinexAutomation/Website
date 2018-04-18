@@ -4,7 +4,7 @@ var webpack = require('webpack');
 module.exports = {
     mode: 'development',
     devtool: 'source-map',
-    entry: './src/ts/index.js',
+    entry: './src/ts/Application.js',
     output: {
         path: __dirname + '/dist',
         filename: 'bundle.js'

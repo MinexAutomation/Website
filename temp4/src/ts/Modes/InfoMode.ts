@@ -1,3 +1,5 @@
+import { ISignalEvent, SignalEvent } from "../Common/Events/SignalEvent";
+
 import { ControlPanel } from "../Controls/ControlPanel";
 import { IMode, ModeInfo } from "./Mode";
 import { WebGLDetectorControl } from "../Controls/WebGLDetectorControl";
@@ -5,12 +7,14 @@ import { WebGLDetectorControl } from "../Controls/WebGLDetectorControl";
 
 export class InfoMode implements IMode {
     public static readonly ID: string = 'info';
-    public static readonly Description: string = 'Info';
-    public static readonly Info: ModeInfo = new ModeInfo(InfoMode.ID, InfoMode.Description);
 
 
-    public get ModeInfo(): ModeInfo {
-        return InfoMode.Info;
+    public get ID(): string {
+        return InfoMode.ID;
+    }
+    private zDisposed: SignalEvent = new SignalEvent();
+    public get Disposed(): ISignalEvent {
+        return this.zDisposed.AsEvent();
     }
     public WebGLDetectorControl: WebGLDetectorControl;
 
@@ -19,7 +23,8 @@ export class InfoMode implements IMode {
         this.WebGLDetectorControl = new WebGLDetectorControl(controlPanel.HtmlElement);
     }
 
-    public Dispose() : void {
+    public Dispose(): void {
         this.WebGLDetectorControl.HtmlElement.remove();
+        this.zDisposed.Dispatch();
     }
 }

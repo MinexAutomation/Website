@@ -1,3 +1,5 @@
+import { SignalEvent, ISignalEvent } from "./Common/Events/SignalEvent";
+
 /**
  * A static class for showing and hiding a modal.
  * 
@@ -10,6 +12,7 @@ export class Modal {
     public static readonly CloseButtonHtmlElementID = 'Modal-CloseButton';
     public static readonly BodyHtmlElementID = 'Modal-Body';
     public static readonly FooterHtmlElementID = 'Modal-Footer';
+    public static readonly DefaultFooterMessage = 'Click outside to close';
 
 
     private static RootHtmlElement: HTMLDivElement;
@@ -40,6 +43,11 @@ export class Modal {
     public static set FooterMessage(value: string) {
         Modal.FooterMessageHtmlElement.innerHTML = value;
     }
+    private static zClosed: SignalEvent = new SignalEvent();
+    public static get Closed(): ISignalEvent {
+        return Modal.zClosed.AsEvent();
+    }
+
 
     public static Initialize(): void {
         Modal.BuildHtml();
@@ -56,6 +64,8 @@ export class Modal {
         Modal.Style.remove();
 
         window.removeEventListener('click', Modal.OnOutsideClick);
+
+        this.zClosed.Dispatch();
     }
 
     private static WireEvents(): void {
@@ -106,6 +116,7 @@ export class Modal {
 
         Modal.FooterMessageHtmlElement = document.createElement('h3');
         footer.appendChild(Modal.FooterMessageHtmlElement);
+        footer.innerHTML = Modal.DefaultFooterMessage;
     }
 
     /**

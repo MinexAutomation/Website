@@ -1,36 +1,17 @@
+import IFactory = Minex.Common.Lib.IFactory;
+
 import { ControlPanel } from "../Controls/ControlPanel";
 import { InfoMode } from "./InfoMode";
 import { ModeInfo, IMode } from "./Mode";
 import { NoneMode } from "./NoneMode";
 import { SetPreferredCoordinateSystemMode } from "./SetPreferredCoordinateSystemMode";
-import { SetPreferredCameraPositionMode } from "./SetPreferredCameraPositionMode";
+import { SetPreferredCameraSpecificationMode } from "./SetPreferredCameraSpecificationMode";
+import { SelfDisposingMode } from "./SelfDisposingMode";
+import { SetLightsMode } from "./SetLightsMode";
+import { PointMode } from "./PointMode";
 
 
-export class ModeFactory {
-    public static readonly ModeInfos: ModeInfo[] = [
-        NoneMode.Info,
-        InfoMode.Info,
-        SetPreferredCoordinateSystemMode.Info,
-        SetPreferredCameraPositionMode.Info,
-        new ModeInfo('annotate', 'Annotate'),
-    ];
-
-
-    public static GetIndexOfModeByModeInfo(modeInfo: ModeInfo): number {
-        let output = ModeFactory.GetIndexOfModeByModeID(modeInfo.ID);
-        return output;
-    }
-
-    public static GetIndexOfModeByModeID(id: string): number {
-        for (let iMode = 0; iMode < ModeFactory.ModeInfos.length; iMode++) {
-            const element = ModeFactory.ModeInfos[iMode];
-            if (element.ID == id) {
-                return iMode;
-            }
-        }
-    }
-
-
+export class ModeFactory implements IFactory<string, IMode> {
     private readonly ControlPanel: ControlPanel;
 
 
@@ -38,31 +19,39 @@ export class ModeFactory {
         this.ControlPanel = controlPanel;
     }
 
-    public GetModeByID(id: string): IMode {
+    public Construct(id: string): IMode {
         let output: IMode;
         switch (id) {
             case InfoMode.ID:
                 output = new InfoMode(this.ControlPanel);
                 break;
 
-            case SetPreferredCameraPositionMode.ID:
-                output = new SetPreferredCameraPositionMode(this.ControlPanel);
+            case PointMode.ID:
+                output = new PointMode(this.ControlPanel);
+                break;
+
+            case SelfDisposingMode.ID:
+                output = new SelfDisposingMode(this.ControlPanel);
+                break;
+
+            case SetLightsMode.ID:
+                output = new SetLightsMode(this.ControlPanel);
+                break;
+
+            case SetPreferredCameraSpecificationMode.ID:
+                output = new SetPreferredCameraSpecificationMode(this.ControlPanel);
                 break;
 
             case SetPreferredCoordinateSystemMode.ID:
                 output = new SetPreferredCoordinateSystemMode(this.ControlPanel);
                 break;
 
-            case NoneMode.ID:
             default:
+                console.warn('ModeFactory - No constructor for mode ID: ' + id);
+            case NoneMode.ID:
                 output = new NoneMode();
                 break;
         }
-        return output;
-    }
-
-    public GetModeByModeInfo(modeInfo: ModeInfo): IMode {
-        let output = this.GetModeByID(modeInfo.ID);
         return output;
     }
 }

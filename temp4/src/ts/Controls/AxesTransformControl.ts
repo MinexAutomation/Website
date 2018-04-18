@@ -64,19 +64,19 @@ export class AxesTransformControl {
         this.HtmlElement.appendChild(title);
 
         this.InstructionsButton = new ButtonControl(this.HtmlElement, 'Show Instructions');
-        this.InstructionsButton.AddOnClickListener(() => { this.ShowInstructions(); });
+        this.InstructionsButton.Click.Subscribe(() => { this.ShowInstructions(); });
 
         this.TransformToggleButton = new ButtonControl(this.HtmlElement);
-        this.TransformToggleButton.AddOnClickListener(this.TransformToggleButtonOnClick)
+        this.TransformToggleButton.Click.Subscribe(this.TransformToggleButtonOnClick)
 
         this.SaveButton = new ButtonControl(this.HtmlElement, 'Save');
-        this.SaveButton.AddOnClickListener(this.SaveButtonOnClick);
+        this.SaveButton.Click.Subscribe(this.SaveButtonOnClick);
 
         this.LoadButton = new ButtonControl(this.HtmlElement, 'Load');
-        this.LoadButton.AddOnClickListener(this.LoadButtonOnClick);
+        this.LoadButton.Click.Subscribe(this.LoadButtonOnClick);
 
         this.ApplyButton = new ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.AddOnClickListener(this.ApplyButtonOnClick);
+        this.ApplyButton.Click.Subscribe(this.ApplyButtonOnClick);
 
         this.Enable = false;
 
@@ -102,12 +102,12 @@ export class AxesTransformControl {
         bodyElement.appendChild(p3);
         p3.innerHTML = 'When you have placed the axes and rotated the model to provide a good alignment, click <b>Apply</b>.';
 
-        Modal.FooterMessage = 'Click outside to close';
-
         Modal.Show();
     }
 
     private SaveButtonOnClick = () => {
+        let coordinateSystem = new CoordinateSystemConversion();
+
         let additionalTranslation = Application.Theater.Axes.position.clone();
 
         let additionalRotationMatrix = new Matrix4();
@@ -122,7 +122,7 @@ export class AxesTransformControl {
         // Update the preferred coordinate system.
         // The angles must be dealt with as transformation matrices; adding the Euler angles would be wrong!
         let currentRotationEuler = new Euler();
-        currentRotationEuler.setFromVector3(Application.PreferredCoordinateSystem.Rotation);
+        currentRotationEuler.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
 
         let currentRotationMatrix = new Matrix4();
         currentRotationMatrix.makeRotationFromEuler(currentRotationEuler);
@@ -135,7 +135,7 @@ export class AxesTransformControl {
 
         let updatedRotation = updatedRotationEuler.toVector3();
 
-        Application.PreferredCoordinateSystem.Rotation.copy(updatedRotation);
+        coordinateSystem.Rotation.copy(updatedRotation);
 
         // The additional translation in this coordinate system was in fact a translation in a different direction in the standard coordinate system.
         let currentRotationMatrixInverse = new Matrix4();
@@ -144,10 +144,13 @@ export class AxesTransformControl {
         let standardSystemTranslation = additionalTranslation.clone();
         standardSystemTranslation.applyMatrix4(currentRotationMatrixInverse);
 
-        Application.PreferredCoordinateSystem.Translation.add(standardSystemTranslation);
+        coordinateSystem.Translation.copy(Application.PreferredCoordinateSystem.Value.Translation);
+        coordinateSystem.Translation.add(standardSystemTranslation);
+
+        Application.PreferredCoordinateSystem.Value = coordinateSystem;
 
         // Save the updated coordinate system.
-        LocalStorageManager.SavePreferredCoordinateSystem(Application.PreferredCoordinateSystem);
+        LocalStorageManager.SavePreferredCoordinateSystem(Application.PreferredCoordinateSystem.Value);
 
         // Finally, update the screen.
         Application.ApplyPreferredCoordinateSystem();
@@ -155,8 +158,8 @@ export class AxesTransformControl {
 
     private LoadButtonOnClick = () => {
         let cs = LocalStorageManager.LoadPreferredCoordinateSystem();
-        if (null !== cs) {
-            Application.PreferredCoordinateSystem.Copy(cs);
+        if (cs) {
+            Application.PreferredCoordinateSystem.Value = cs;
         }
         Application.ApplyPreferredCoordinateSystem();
     }

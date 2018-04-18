@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import { Constants } from "./Constants";
+import { Lighting } from "./Lighting";
 
 
 export class Theater {
@@ -9,6 +10,7 @@ export class Theater {
 
     public Scene: THREE.Scene;
     public Camera: THREE.PerspectiveCamera;
+    public readonly Lighting: Lighting;
     public Renderer: THREE.WebGLRenderer;
     public OutputHtmlElement: HTMLDivElement;
     public Axes: THREE.AxesHelper;
@@ -25,6 +27,8 @@ export class Theater {
         // this.Camera.position.set(0, 0, Constants.ModestDistance);
         this.Camera.lookAt(0, 0, 0);
         this.Scene.add(this.Camera);
+
+        this.Lighting = new Lighting(this.Scene);
 
         this.Renderer = new THREE.WebGLRenderer();
         this.Renderer.setClearColor(0xffffff);

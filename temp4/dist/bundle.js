@@ -66,7 +66,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = "./src/ts/index.js");
+/******/ 	return __webpack_require__(__webpack_require__.s = "./src/ts/Application.js");
 /******/ })
 /************************************************************************/
 /******/ ({
@@ -52055,20 +52055,23 @@ THREE.OBJLoader = ( function () {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
-var ControlPanel_1 = __webpack_require__(/*! ./Controls/ControlPanel */ "./src/ts/Controls/ControlPanel.js");
-var LocalStorageManager_1 = __webpack_require__(/*! ./LocalStorageManager */ "./src/ts/LocalStorageManager.js");
-var Miniature_1 = __webpack_require__(/*! ./Miniature */ "./src/ts/Miniature.js");
 var Theater_1 = __webpack_require__(/*! ./Theater */ "./src/ts/Theater.js");
-var ScratchControl_1 = __webpack_require__(/*! ./Controls/ScratchControl */ "./src/ts/Controls/ScratchControl.js");
 var TrackballController_1 = __webpack_require__(/*! ./Controllers/TrackballController */ "./src/ts/Controllers/TrackballController.js");
-__webpack_require__(/*! three/TransformControls */ "./node_modules/three/examples/js/controls/TransformControls.js");
+var Miniature_1 = __webpack_require__(/*! ./Miniature */ "./src/ts/Miniature.js");
+var ControlPanel_1 = __webpack_require__(/*! ./Controls/ControlPanel */ "./src/ts/Controls/ControlPanel.js");
 var ModesControl_1 = __webpack_require__(/*! ./Controls/ModesControl */ "./src/ts/Controls/ModesControl.js");
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var NotifyingValueProperty_1 = __webpack_require__(/*! ./Common/NotifyingValueProperty */ "./src/ts/Common/NotifyingValueProperty.js");
+var CameraSpecification_1 = __webpack_require__(/*! ./CameraSpecification */ "./src/ts/CameraSpecification.js");
+var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
+var ScratchControl_1 = __webpack_require__(/*! ./Controls/ScratchControl */ "./src/ts/Controls/ScratchControl.js");
 var LoadingBlocker_1 = __webpack_require__(/*! ./LoadingBlocker */ "./src/ts/LoadingBlocker.js");
-var ModeFactory_1 = __webpack_require__(/*! ./Modes/ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var Tour_1 = __webpack_require__(/*! ./Tour/Tour */ "./src/ts/Tour/Tour.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ./LocalStorageManager */ "./src/ts/LocalStorageManager.js");
 var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
-var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
+var SetPreferredCameraSpecificationMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCameraSpecificationMode */ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js");
+var SetLightsMode_1 = __webpack_require__(/*! ./Modes/SetLightsMode */ "./src/ts/Modes/SetLightsMode.js");
+var Modal_1 = __webpack_require__(/*! ./Modal */ "./src/ts/Modal.js");
 var Application = /** @class */ (function () {
     function Application() {
     }
@@ -52082,46 +52085,120 @@ var Application = /** @class */ (function () {
         Application.ControlPanel = new ControlPanel_1.ControlPanel();
         Application.ModesControl = new ModesControl_1.ModesControl(Application.ControlPanel);
         var scratchControl = new ScratchControl_1.ScratchControl(Application.ControlPanel);
-        scratchControl.Button.AddOnClickListener(Application.Scratch);
+        scratchControl.Button.Click.Subscribe(Application.Scratch);
         Application.SetWindowEventHandlers();
     };
-    Application.ApplyPreferredCameraPosition = function () {
-        Application.Theater.Camera.position.copy(Application.PreferredCameraPosition.Translation);
-        Application.Theater.Camera.rotation.setFromVector3(Application.PreferredCameraPosition.Rotation);
+    Application.ApplyPreferredCameraSpecification = function () {
+        Application.Theater.Camera.position.copy(Application.PreferredCameraSpecification.Value.Position);
+        Application.Theater.Camera.rotation.setFromVector3(Application.PreferredCameraSpecification.Value.Rotation);
+        // Application.TrackballController.Controls.target.copy(Application.PreferredCameraSpecification.Value.Target);
+        Application.Theater.Camera.up.copy(Application.PreferredCameraSpecification.Value.Up);
     };
     Application.ApplyPreferredCoordinateSystem = function () {
         Application.Theater.Axes.position.set(0, 0, 0);
         Application.Theater.Axes.rotation.set(0, 0, 0);
-        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Translation);
-        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Rotation);
+        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
+        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
     };
     Application.MiniatureLoadingFinishedHandler = function () {
         LoadingBlocker_1.LoadingBlocker.Hide();
-        var preferredCoordinateSystemPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
-        if (preferredCoordinateSystemPreviouslyDefined) {
-            var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCoordinateSystem();
-            Application.PreferredCoordinateSystem.Copy(loaded);
-            // Apply the preferred coordinate system.
+        Application.SetupTour();
+    };
+    Application.SetupTour = function () {
+        var coordinateSystemPreviouslySet = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
+        var cameraSpecificationPreviouslySet = LocalStorageManager_1.LocalStorageManager.PreferredCameraSpecificationExists();
+        var lightingSpecificationPreviouslySet = LocalStorageManager_1.LocalStorageManager.LightingSpecificationExists();
+        var tour = new Tour_1.Tour();
+        Application.AddTourInstructions(tour);
+        if (coordinateSystemPreviouslySet) {
+            var coordinateSystem = LocalStorageManager_1.LocalStorageManager.LoadPreferredCoordinateSystem();
+            Application.PreferredCoordinateSystem.Value = coordinateSystem;
             Application.ApplyPreferredCoordinateSystem();
         }
         else {
-            // Start in the set preferred coordinate system mode.
-            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.Info);
-            Application.ModesControl.SetSelectedIndex(index);
-            return;
+            tour.AddStep(function () {
+                Application.ModesControl.SetCurrentModeByID(SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.ID);
+                Application.PreferredCoordinateSystem.ValueChanged.SubscribeOnce(function () {
+                    tour.NextStep();
+                });
+            });
         }
-        var preferredCameraPositionPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCameraPositionExists();
-        if (preferredCameraPositionPreviouslyDefined) {
-            var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCameraPosition();
-            Application.PreferredCameraPosition.Copy(loaded);
-            Application.ApplyPreferredCameraPosition();
+        if (cameraSpecificationPreviouslySet) {
+            var cameraSpecification = LocalStorageManager_1.LocalStorageManager.LoadPreferredCameraSpecification();
+            Application.PreferredCameraSpecification.Value = cameraSpecification;
+            Application.ApplyPreferredCameraSpecification();
         }
         else {
-            // Start in the set preferred camera position mode.
-            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info);
-            Application.ModesControl.SetSelectedIndex(index);
-            return;
+            tour.AddStep(function () {
+                Application.ModesControl.SetCurrentModeByID(SetPreferredCameraSpecificationMode_1.SetPreferredCameraSpecificationMode.ID);
+                Application.PreferredCameraSpecification.ValueChanged.SubscribeOnce(function () {
+                    tour.NextStep();
+                });
+            });
         }
+        if (lightingSpecificationPreviouslySet) {
+            var lightingSpecification = LocalStorageManager_1.LocalStorageManager.LoadLightingSpecification();
+            lightingSpecification.AdjustToPreferredCoordinateSystem(Application.PreferredCoordinateSystem.Value);
+            Application.Theater.Lighting.Specification.Copy(lightingSpecification);
+            Application.Theater.Lighting.Specification.OnChange();
+        }
+        else {
+            // TEMP: Start in the set lights mode.
+            tour.AddStep(function () {
+                Application.ModesControl.SetCurrentModeByID(SetLightsMode_1.SetLightsMode.ID);
+                Application.Theater.Lighting.Specification.Changed.SubscribeOnce(function () {
+                    tour.NextStep();
+                });
+            });
+        }
+        // // TEMP: Start in the point mode.
+        // tour.AddStep(() => {
+        //     Application.ModesControl.SetCurrentModeByID(PointMode.ID);
+        //     // No next step.
+        // });
+        Application.AddTourFinished(tour);
+        var needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
+        if (needsTour) {
+            // Start the tour!
+            tour.NextStep();
+        }
+    };
+    Application.AddTourInstructions = function (tour) {
+        // Show the tour instructions.
+        tour.AddStep(function () {
+            Modal_1.Modal.Initialize();
+            Modal_1.Modal.HeaderMessage = 'Welcome! Let\'s have a tour.';
+            var body = Modal_1.Modal.GetBodyHtmlElement();
+            var bodyIntroduction = document.createElement('p');
+            body.appendChild(bodyIntroduction);
+            bodyIntroduction.innerHTML = 'We will walkthrough setting up these settings:';
+            var ul = document.createElement('ul');
+            body.appendChild(ul);
+            var coordinates = document.createElement('li');
+            ul.appendChild(coordinates);
+            coordinates.innerHTML = 'Coordinate System';
+            var camera = document.createElement('li');
+            ul.appendChild(camera);
+            camera.innerHTML = 'Camera View';
+            var lighting = document.createElement('li');
+            ul.appendChild(lighting);
+            lighting.innerHTML = 'Lights';
+            Modal_1.Modal.Closed.SubscribeOnce(function () {
+                tour.NextStep();
+            });
+            Modal_1.Modal.Show();
+        });
+    };
+    Application.AddTourFinished = function (tour) {
+        tour.AddStep(function () {
+            Modal_1.Modal.Initialize();
+            Modal_1.Modal.HeaderMessage = 'Done!';
+            Modal_1.Modal.BodyMessage = 'Tour finished.';
+            Modal_1.Modal.Closed.SubscribeOnce(function () {
+                tour.NextStep();
+            });
+            Modal_1.Modal.Show();
+        });
     };
     Application.Scratch = function (ev) {
         // let dbg = Application.Miniature.Geometry;
@@ -52147,7 +52224,21 @@ var Application = /** @class */ (function () {
         //     // r.z += 0.05;
         //     Application.Miniature.Object.rotation.setFromVector3(r);
         // })
-        console.log(Application.Theater.Camera.position);
+        // console.log(Application.Theater.Camera.position);
+        // let dbg = Application.Theater.Camera;
+        // let nullValue: number = null;
+        // if(nullValue) {
+        //     console.log('nullValue true');
+        // } else {
+        //     console.log('nullValue false');
+        // }
+        // let undefValue: number = undefined;
+        // if(undefValue) {
+        //     console.log('undefValue true');
+        // } else {
+        //     console.log('undefValue false');
+        // }
+        var dbg = Application.Theater.Lighting.DirectionalLight;
     };
     Application.SubMain = function () {
         Application.Theater = new Theater_1.Theater();
@@ -52156,7 +52247,7 @@ var Application = /** @class */ (function () {
         Application.Miniature = new Miniature_1.Miniature(Application.Theater, Constants_1.Constants.ModelsPath, Constants_1.Constants.ObjFileName, Constants_1.Constants.MtlFileName);
         Application.ControlPanel = new ControlPanel_1.ControlPanel();
         var scratchControl = new ScratchControl_1.ScratchControl(Application.ControlPanel);
-        scratchControl.Button.AddOnClickListener(Application.Scratch);
+        scratchControl.Button.Click.Subscribe(Application.Scratch);
         Application.SetWindowEventHandlers();
     };
     Application.SetWindowEventHandlers = function () {
@@ -52172,8 +52263,8 @@ var Application = /** @class */ (function () {
      *
      * The reference is constant, change by modifying the referenced object.
      */
-    Application.PreferredCoordinateSystem = new CoordinateSystemConversion_1.CoordinateSystemConversion();
-    Application.PreferredCameraPosition = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+    Application.PreferredCoordinateSystem = new NotifyingValueProperty_1.NotifyingValueProperty(new CoordinateSystemConversion_1.CoordinateSystemConversion());
+    Application.PreferredCameraSpecification = new NotifyingValueProperty_1.NotifyingValueProperty(new CameraSpecification_1.CameraSpecification());
     Application.MiniatureLoadingProgressHandler = function (ev) {
         LoadingBlocker_1.LoadingBlocker.Message = 'Loading... ' + ((ev.loaded / ev.total) * 100).toFixed(0) + '%';
     };
@@ -52183,6 +52274,397 @@ var Application = /** @class */ (function () {
     return Application;
 }());
 exports.Application = Application;
+window.onload = Application.Main;
+
+
+/***/ }),
+
+/***/ "./src/ts/CameraSpecification.js":
+/*!***************************************!*\
+  !*** ./src/ts/CameraSpecification.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var CameraSpecification = /** @class */ (function () {
+    function CameraSpecification(Position, Rotation, Up, Target) {
+        if (Position === void 0) { Position = new three_1.Vector3(); }
+        if (Rotation === void 0) { Rotation = new three_1.Vector3(); }
+        if (Up === void 0) { Up = new three_1.Vector3(); }
+        if (Target === void 0) { Target = new three_1.Vector3(); }
+        this.Position = Position;
+        this.Rotation = Rotation;
+        this.Up = Up;
+        this.Target = Target;
+    }
+    CameraSpecification.prototype.ToObject = function () {
+        var position = StorageVector3_1.StorageVector3.ToObject(this.Position);
+        var rotation = StorageVector3_1.StorageVector3.ToObject(this.Rotation);
+        var up = StorageVector3_1.StorageVector3.ToObject(this.Up);
+        var target = StorageVector3_1.StorageVector3.ToObject(this.Target);
+        var output = {
+            Position: position,
+            Rotation: rotation,
+            Up: up,
+            Target: target,
+        };
+        return output;
+    };
+    CameraSpecification.prototype.FromObject = function (obj) {
+        var position = StorageVector3_1.StorageVector3.FromObject(obj.Position);
+        this.Position.copy(position);
+        var rotation = StorageVector3_1.StorageVector3.FromObject(obj.Rotation);
+        this.Rotation.copy(rotation);
+        var up = StorageVector3_1.StorageVector3.FromObject(obj.Up);
+        this.Up.copy(up);
+        var target = StorageVector3_1.StorageVector3.FromObject(obj.Target);
+        this.Target.copy(target);
+    };
+    return CameraSpecification;
+}());
+exports.CameraSpecification = CameraSpecification;
+
+
+/***/ }),
+
+/***/ "./src/ts/Classes/StorageVector3.js":
+/*!******************************************!*\
+  !*** ./src/ts/Classes/StorageVector3.js ***!
+  \******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var StorageVector3 = /** @class */ (function () {
+    function StorageVector3(X, Y, Z) {
+        if (X === void 0) { X = 0; }
+        if (Y === void 0) { Y = 0; }
+        if (Z === void 0) { Z = 0; }
+        this.X = X;
+        this.Y = Y;
+        this.Z = Z;
+    }
+    StorageVector3.ToObject = function (vector) {
+        var output = {
+            X: vector.x,
+            Y: vector.y,
+            Z: vector.z,
+        };
+        return output;
+    };
+    StorageVector3.FromObject = function (obj) {
+        var output = new three_1.Vector3(obj.X, obj.Y, obj.Z);
+        return output;
+    };
+    StorageVector3.ToVector3FromObj = function (obj) {
+        var output = new three_1.Vector3(obj.X, obj.Y, obj.Z);
+        return output;
+    };
+    StorageVector3.ToObjFromVector3 = function (vector) {
+        var output = {
+            X: vector.x,
+            Y: vector.y,
+            Z: vector.z,
+        };
+        return output;
+    };
+    StorageVector3.prototype.ToObject = function () {
+        var output = {
+            X: this.X,
+            Y: this.Y,
+            Z: this.Z,
+        };
+        return output;
+    };
+    StorageVector3.prototype.FromObject = function (obj) {
+        this.X = obj.X;
+        this.Y = obj.Y;
+        this.Z = obj.Z;
+    };
+    StorageVector3.prototype.ToVector3 = function () {
+        var output = new three_1.Vector3(this.X, this.Y, this.Z);
+        return output;
+    };
+    StorageVector3.prototype.FromVector3 = function (vector) {
+        this.X = vector.x;
+        this.Y = vector.y;
+        this.Z = vector.z;
+    };
+    return StorageVector3;
+}());
+exports.StorageVector3 = StorageVector3;
+
+
+/***/ }),
+
+/***/ "./src/ts/Common/Events/Event.js":
+/*!***************************************!*\
+  !*** ./src/ts/Common/Events/Event.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var Events_1 = __webpack_require__(/*! ./Events */ "./src/ts/Common/Events/Events.js");
+var Event = /** @class */ (function (_super) {
+    __extends(Event, _super);
+    function Event() {
+        return _super.call(this) || this;
+    }
+    Event.prototype.Dispatch = function (sender, argument) {
+        this.zDispatch(false, this, arguments);
+    };
+    Event.prototype.DispatchAsynchronously = function (sender, argument) {
+        this.zDispatch(true, this, arguments);
+    };
+    Event.prototype.AsEvent = function () {
+        return _super.prototype.AsEvent.call(this);
+    };
+    return Event;
+}(Events_1.DispatcherBase));
+exports.Event = Event;
+
+
+/***/ }),
+
+/***/ "./src/ts/Common/Events/Events.js":
+/*!****************************************!*\
+  !*** ./src/ts/Common/Events/Events.js ***!
+  \****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Subscription = /** @class */ (function () {
+    function Subscription(handler, IsOnce) {
+        this.handler = handler;
+        this.IsOnce = IsOnce;
+        this.IsExecuted = false;
+    }
+    Subscription.prototype.Execute = function (executeAsynchronously, scope, args) {
+        var _this = this;
+        if (!this.IsOnce || !this.IsExecuted) {
+            this.IsExecuted = true;
+            if (executeAsynchronously) {
+                setTimeout(function () {
+                    _this.handler.apply(scope, args);
+                }, 0);
+            }
+            else {
+                this.handler.apply(scope, args);
+            }
+        }
+    };
+    return Subscription;
+}());
+exports.Subscription = Subscription;
+var DispatcherBase = /** @class */ (function () {
+    function DispatcherBase() {
+        this.Subscriptions = new Array();
+        this.Wrapper = new DispatcherWrapper(this);
+    }
+    DispatcherBase.prototype.Subscribe = function (handler) {
+        var _this = this;
+        if (handler) {
+            this.Subscriptions.push(new Subscription(handler, false));
+        }
+        return function () {
+            _this.Unsubscribe(handler);
+        };
+    };
+    DispatcherBase.prototype.SubscribeOnce = function (handler) {
+        var _this = this;
+        if (handler) {
+            this.Subscriptions.push(new Subscription(handler, true));
+        }
+        return function () {
+            _this.Unsubscribe(handler);
+        };
+    };
+    DispatcherBase.prototype.IsSubscribed = function (handler) {
+        if (!handler) {
+            return false;
+        }
+        var output = this.Subscriptions.some(function (subscription) { return subscription.handler === handler; });
+        return output;
+    };
+    DispatcherBase.prototype.Unsubscribe = function (handler) {
+        if (!handler) {
+            return;
+        }
+        for (var iSubscription = 0; iSubscription < this.Subscriptions.length; iSubscription++) {
+            var element = this.Subscriptions[iSubscription];
+            if (element.handler === handler) {
+                this.Subscriptions.splice(iSubscription, 1);
+                break;
+            }
+        }
+    };
+    DispatcherBase.prototype.Clear = function () {
+        this.Subscriptions.splice(0);
+    };
+    DispatcherBase.prototype.zDispatch = function (executeAsynchronously, scope, args) {
+        var _this = this;
+        var copy = this.Subscriptions.slice(0);
+        copy.forEach(function (subscription) {
+            subscription.Execute(executeAsynchronously, scope, args);
+            _this.Cleanup(subscription);
+        });
+    };
+    DispatcherBase.prototype.Cleanup = function (subscription) {
+        if (subscription.IsOnce && subscription.IsExecuted) {
+            var index = this.Subscriptions.indexOf(subscription);
+            if (-1 < index) {
+                this.Subscriptions.splice(index, 1);
+            }
+        }
+    };
+    DispatcherBase.prototype.AsEvent = function () {
+        return this.Wrapper;
+    };
+    return DispatcherBase;
+}());
+exports.DispatcherBase = DispatcherBase;
+var DispatcherWrapper = /** @class */ (function () {
+    function DispatcherWrapper(dispatcher) {
+        this.zSubscribe = function (handler) { return dispatcher.Subscribe(handler); };
+        this.zSubscribeOnce = function (handler) { return dispatcher.SubscribeOnce(handler); };
+        this.zIsSubscribed = function (handler) { return dispatcher.IsSubscribed(handler); };
+        this.zUnsubscribe = function (handler) { return dispatcher.Unsubscribe(handler); };
+        this.zClear = function () { return dispatcher.Clear(); };
+    }
+    DispatcherWrapper.prototype.Subscribe = function (handler) {
+        var output = this.zSubscribe(handler);
+        return output;
+    };
+    DispatcherWrapper.prototype.SubscribeOnce = function (handler) {
+        var output = this.zSubscribeOnce(handler);
+        return output;
+    };
+    DispatcherWrapper.prototype.IsSubscribed = function (handler) {
+        var output = this.zIsSubscribed(handler);
+        return output;
+    };
+    DispatcherWrapper.prototype.Unsubscribe = function (handler) {
+        this.zUnsubscribe(handler);
+    };
+    DispatcherWrapper.prototype.Clear = function () {
+        this.zClear();
+    };
+    return DispatcherWrapper;
+}());
+exports.DispatcherWrapper = DispatcherWrapper;
+
+
+/***/ }),
+
+/***/ "./src/ts/Common/Events/SignalEvent.js":
+/*!*********************************************!*\
+  !*** ./src/ts/Common/Events/SignalEvent.js ***!
+  \*********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var Events_1 = __webpack_require__(/*! ./Events */ "./src/ts/Common/Events/Events.js");
+var SignalEvent = /** @class */ (function (_super) {
+    __extends(SignalEvent, _super);
+    function SignalEvent() {
+        return _super.call(this) || this;
+    }
+    SignalEvent.prototype.Dispatch = function () {
+        this.zDispatch(false, this, arguments);
+    };
+    SignalEvent.prototype.DispatchAsynchronously = function () {
+        this.zDispatch(true, this, arguments);
+    };
+    SignalEvent.prototype.AsEvent = function () {
+        return _super.prototype.AsEvent.call(this);
+    };
+    return SignalEvent;
+}(Events_1.DispatcherBase));
+exports.SignalEvent = SignalEvent;
+
+
+/***/ }),
+
+/***/ "./src/ts/Common/NotifyingValueProperty.js":
+/*!*************************************************!*\
+  !*** ./src/ts/Common/NotifyingValueProperty.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ./Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+/**
+ * Represents a property that notifies listeners when the value it contains changes.
+ *
+ * Note: The contained value should use value semantics. If the value uses reference semantics and is changed via its reference, this class will have no way of knowing about that change.
+ */
+var NotifyingValueProperty = /** @class */ (function () {
+    function NotifyingValueProperty(value) {
+        if (value === void 0) { value = null; }
+        this.zValueChanged = new SignalEvent_1.SignalEvent();
+        this.zValue = value;
+    }
+    Object.defineProperty(NotifyingValueProperty.prototype, "Value", {
+        get: function () {
+            return this.zValue;
+        },
+        set: function (value) {
+            this.zValue = value;
+            this.zValueChanged.Dispatch();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NotifyingValueProperty.prototype, "ValueChanged", {
+        get: function () {
+            return this.zValueChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return NotifyingValueProperty;
+}());
+exports.NotifyingValueProperty = NotifyingValueProperty;
 
 
 /***/ }),
@@ -52341,11 +52823,13 @@ var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Contr
 var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
 var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
 var Modal_1 = __webpack_require__(/*! ../Modal */ "./src/ts/Modal.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var AxesTransformControl = /** @class */ (function () {
     function AxesTransformControl(controlPanel) {
         var _this = this;
         this.SaveButtonOnClick = function () {
+            var coordinateSystem = new CoordinateSystemConversion_1.CoordinateSystemConversion();
             var additionalTranslation = Application_1.Application.Theater.Axes.position.clone();
             var additionalRotationMatrix = new three_1.Matrix4();
             additionalRotationMatrix.makeRotationFromEuler(Application_1.Application.Theater.Axes.rotation);
@@ -52356,7 +52840,7 @@ var AxesTransformControl = /** @class */ (function () {
             // Update the preferred coordinate system.
             // The angles must be dealt with as transformation matrices; adding the Euler angles would be wrong!
             var currentRotationEuler = new three_1.Euler();
-            currentRotationEuler.setFromVector3(Application_1.Application.PreferredCoordinateSystem.Rotation);
+            currentRotationEuler.setFromVector3(Application_1.Application.PreferredCoordinateSystem.Value.Rotation);
             var currentRotationMatrix = new three_1.Matrix4();
             currentRotationMatrix.makeRotationFromEuler(currentRotationEuler);
             var updatedRotationMatrix = currentRotationMatrix.clone();
@@ -52364,22 +52848,24 @@ var AxesTransformControl = /** @class */ (function () {
             var updatedRotationEuler = new three_1.Euler();
             updatedRotationEuler.setFromRotationMatrix(updatedRotationMatrix);
             var updatedRotation = updatedRotationEuler.toVector3();
-            Application_1.Application.PreferredCoordinateSystem.Rotation.copy(updatedRotation);
+            coordinateSystem.Rotation.copy(updatedRotation);
             // The additional translation in this coordinate system was in fact a translation in a different direction in the standard coordinate system.
             var currentRotationMatrixInverse = new three_1.Matrix4();
             currentRotationMatrixInverse.getInverse(currentRotationMatrix);
             var standardSystemTranslation = additionalTranslation.clone();
             standardSystemTranslation.applyMatrix4(currentRotationMatrixInverse);
-            Application_1.Application.PreferredCoordinateSystem.Translation.add(standardSystemTranslation);
+            coordinateSystem.Translation.copy(Application_1.Application.PreferredCoordinateSystem.Value.Translation);
+            coordinateSystem.Translation.add(standardSystemTranslation);
+            Application_1.Application.PreferredCoordinateSystem.Value = coordinateSystem;
             // Save the updated coordinate system.
-            LocalStorageManager_1.LocalStorageManager.SavePreferredCoordinateSystem(Application_1.Application.PreferredCoordinateSystem);
+            LocalStorageManager_1.LocalStorageManager.SavePreferredCoordinateSystem(Application_1.Application.PreferredCoordinateSystem.Value);
             // Finally, update the screen.
             Application_1.Application.ApplyPreferredCoordinateSystem();
         };
         this.LoadButtonOnClick = function () {
             var cs = LocalStorageManager_1.LocalStorageManager.LoadPreferredCoordinateSystem();
-            if (null !== cs) {
-                Application_1.Application.PreferredCoordinateSystem.Copy(cs);
+            if (cs) {
+                Application_1.Application.PreferredCoordinateSystem.Value = cs;
             }
             Application_1.Application.ApplyPreferredCoordinateSystem();
         };
@@ -52400,15 +52886,15 @@ var AxesTransformControl = /** @class */ (function () {
         title.innerHTML = 'Axes Transform';
         this.HtmlElement.appendChild(title);
         this.InstructionsButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Show Instructions');
-        this.InstructionsButton.AddOnClickListener(function () { _this.ShowInstructions(); });
+        this.InstructionsButton.Click.Subscribe(function () { _this.ShowInstructions(); });
         this.TransformToggleButton = new ButtonControl_1.ButtonControl(this.HtmlElement);
-        this.TransformToggleButton.AddOnClickListener(this.TransformToggleButtonOnClick);
+        this.TransformToggleButton.Click.Subscribe(this.TransformToggleButtonOnClick);
         this.SaveButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Save');
-        this.SaveButton.AddOnClickListener(this.SaveButtonOnClick);
+        this.SaveButton.Click.Subscribe(this.SaveButtonOnClick);
         this.LoadButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Load');
-        this.LoadButton.AddOnClickListener(this.LoadButtonOnClick);
+        this.LoadButton.Click.Subscribe(this.LoadButtonOnClick);
         this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.AddOnClickListener(this.ApplyButtonOnClick);
+        this.ApplyButton.Click.Subscribe(this.ApplyButtonOnClick);
         this.Enable = false;
         this.ShowInstructions();
     }
@@ -52456,7 +52942,6 @@ var AxesTransformControl = /** @class */ (function () {
         var p3 = document.createElement('p');
         bodyElement.appendChild(p3);
         p3.innerHTML = 'When you have placed the axes and rotated the model to provide a good alignment, click <b>Apply</b>.';
-        Modal_1.Modal.FooterMessage = 'Click outside to close';
         Modal_1.Modal.Show();
     };
     AxesTransformControl.prototype.SetTransformToggleButtonText = function () {
@@ -52486,10 +52971,11 @@ exports.AxesTransformControl = AxesTransformControl;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var Event_1 = __webpack_require__(/*! ../Common/Events/Event */ "./src/ts/Common/Events/Event.js");
 var ButtonControl = /** @class */ (function () {
     function ButtonControl(parent, text, id) {
         var _this = this;
-        this.OnClickListeners = [];
+        this.zClick = new Event_1.Event();
         this.OnMouseOver = function () {
             _this.zHtmlElement.style.backgroundColor = 'LightGray';
         };
@@ -52501,10 +52987,7 @@ var ButtonControl = /** @class */ (function () {
             setTimeout(function () {
                 _this.zHtmlElement.style.backgroundColor = 'inherit';
             }, 1000);
-            _this.OnClickListeners.forEach(function (listener) {
-                var boundListener = listener.bind(_this.zHtmlElement);
-                boundListener(ev);
-            });
+            _this.zClick.Dispatch(_this, ev);
         };
         this.zHtmlElement = document.createElement('div');
         this.zHtmlElement.className = ButtonControl.ButtonCssClassName;
@@ -52569,15 +53052,13 @@ var ButtonControl = /** @class */ (function () {
     ButtonControl.prototype.Disable = function () {
         this.Enabled = false;
     };
-    ButtonControl.prototype.AddOnClickListener = function (listener) {
-        this.OnClickListeners.push(listener);
-    };
-    ButtonControl.prototype.RemoveOnClickListener = function (listener) {
-        var index = this.OnClickListeners.indexOf(listener);
-        if (-1 !== index) {
-            this.OnClickListeners.splice(index, 1);
-        }
-    };
+    Object.defineProperty(ButtonControl.prototype, "Click", {
+        get: function () {
+            return this.zClick.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
     ButtonControl.prototype.AddListeners = function () {
         this.zHtmlElement.addEventListener('mouseover', this.OnMouseOver);
         this.zHtmlElement.addEventListener('mouseleave', this.OnMouseLeave);
@@ -52612,24 +53093,47 @@ var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Control
 var Modal_1 = __webpack_require__(/*! ../Modal */ "./src/ts/Modal.js");
 var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
 var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var CameraTransformControl = /** @class */ (function () {
     function CameraTransformControl(controlPanel) {
         var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
         this.OnApply = function () {
-            Application_1.Application.PreferredCameraPosition.Translation.copy(Application_1.Application.Theater.Camera.position);
-            Application_1.Application.PreferredCameraPosition.Rotation.copy(Application_1.Application.Theater.Camera.rotation.toVector3());
-            LocalStorageManager_1.LocalStorageManager.SavePreferredCameraPosition(Application_1.Application.PreferredCameraPosition);
+            Application_1.Application.PreferredCameraSpecification.Value.Position.copy(Application_1.Application.Theater.Camera.position);
+            Application_1.Application.PreferredCameraSpecification.Value.Rotation.copy(Application_1.Application.Theater.Camera.rotation.toVector3());
+            Application_1.Application.PreferredCameraSpecification.Value.Up.copy(Application_1.Application.Theater.Camera.up);
+            var cameraDirection = new three_1.Vector3();
+            Application_1.Application.Theater.Camera.getWorldDirection(cameraDirection);
+            var cameraPosition = Application_1.Application.Theater.Camera.position.clone();
+            var target = new three_1.Vector3();
+            target.copy(Application_1.Application.Theater.Camera.position);
+            target.add(cameraDirection);
+            Application_1.Application.PreferredCameraSpecification.Value.Target.copy(target);
+            LocalStorageManager_1.LocalStorageManager.SavePreferredCameraSpecification(Application_1.Application.PreferredCameraSpecification.Value);
+            _this.Dispose();
         };
         this.HtmlElement = document.createElement('div');
         controlPanel.HtmlElement.appendChild(this.HtmlElement);
         this.HtmlElement.id = CameraTransformControl.HtmlElementId;
         this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
         this.InstructionsButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Show Instructions');
-        this.InstructionsButton.AddOnClickListener(function () { _this.ShowInstructions(); });
+        this.InstructionsButton.Click.Subscribe(function () { _this.ShowInstructions(); });
         this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.AddOnClickListener(this.OnApply);
+        this.ApplyButton.Click.Subscribe(this.OnApply);
         this.ShowInstructions();
     }
+    Object.defineProperty(CameraTransformControl.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    CameraTransformControl.prototype.Dispose = function () {
+        this.HtmlElement.remove();
+        this.zDisposed.Dispatch();
+    };
     CameraTransformControl.prototype.ShowInstructions = function () {
         Modal_1.Modal.Initialize();
         Modal_1.Modal.HeaderMessage = 'Setup Your Preferred Camera View';
@@ -52640,7 +53144,6 @@ var CameraTransformControl = /** @class */ (function () {
         var p2 = document.createElement('p');
         bodyElement.appendChild(p2);
         p2.innerHTML = 'When ready, click <b>Apply</b>.';
-        Modal_1.Modal.FooterMessage = 'Click outside to close';
         Modal_1.Modal.Show();
     };
     CameraTransformControl.HtmlElementId = 'CameraTransformControl';
@@ -52733,27 +53236,43 @@ exports.ControlPanel = ControlPanel;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
 var ModeFactory_1 = __webpack_require__(/*! ../Modes/ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var Mode_1 = __webpack_require__(/*! ../Modes/Mode */ "./src/ts/Modes/Mode.js");
+var NoneMode_1 = __webpack_require__(/*! ../Modes/NoneMode */ "./src/ts/Modes/NoneMode.js");
+var InfoMode_1 = __webpack_require__(/*! ../Modes/InfoMode */ "./src/ts/Modes/InfoMode.js");
+var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ../Modes/SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
+var SetPreferredCameraSpecificationMode_1 = __webpack_require__(/*! ../Modes/SetPreferredCameraSpecificationMode */ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js");
+var SelfDisposingMode_1 = __webpack_require__(/*! ../Modes/SelfDisposingMode */ "./src/ts/Modes/SelfDisposingMode.js");
+var SetLightsMode_1 = __webpack_require__(/*! ../Modes/SetLightsMode */ "./src/ts/Modes/SetLightsMode.js");
+var PointMode_1 = __webpack_require__(/*! ../Modes/PointMode */ "./src/ts/Modes/PointMode.js");
 // Allows choosing which mode will put its controls to the control panel.
 // The ModesControl should always be first in the Control Panel.
 var ModesControl = /** @class */ (function () {
     function ModesControl(controlPanel) {
         var _this = this;
-        this.Mode = null;
-        this.OnChange = function () {
+        this.CurrentMode = null;
+        this.zModeChanged = new SignalEvent_1.SignalEvent();
+        this.OnSelectChange = function () {
             var selectedIndex = _this.Select.selectedIndex;
-            var selected = _this.Select.childNodes[selectedIndex];
-            var selectedID = selected.value;
-            if (null !== _this.Mode) {
-                _this.Mode.Dispose();
+            var selectedID = ModesControl.ModeInfos[selectedIndex].ID;
+            if (_this.CurrentMode) {
+                // If the modes control disposes a node, prevent us from setting the default node.
+                _this.CurrentMode.Disposed.Unsubscribe(_this.OnCurrentModeDisposed);
+                _this.CurrentMode.Dispose();
             }
-            _this.Mode = _this.ModeFactory.GetModeByID(selectedID);
+            _this.CurrentMode = _this.ModeFactory.Construct(selectedID);
+            // If a mode gets disposed, set the default mode.
+            _this.CurrentMode.Disposed.SubscribeOnce(_this.OnCurrentModeDisposed);
+        };
+        this.OnCurrentModeDisposed = function () {
+            _this.SetDefaultMode();
         };
         this.ModeFactory = new ModeFactory_1.ModeFactory(controlPanel);
         // HTML.
-        this.zHtmlElement = document.createElement('div');
-        controlPanel.HtmlElement.appendChild(this.zHtmlElement);
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
         this.HtmlElement.id = ModesControl.HtmlElementId;
         this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
         this.Style = document.createElement('style');
@@ -52767,36 +53286,71 @@ var ModesControl = /** @class */ (function () {
         this.Select = document.createElement('select');
         this.HtmlElement.appendChild(this.Select);
         this.Select.id = ModesControl.SelectHtmlElementId;
-        ModeFactory_1.ModeFactory.ModeInfos.forEach(function (modeInfo) {
+        ModesControl.ModeInfos.forEach(function (modeInfo) {
             var option = document.createElement('option');
             _this.Select.appendChild(option);
             option.value = modeInfo.ID;
             option.innerHTML = modeInfo.Description;
         });
-        this.Select.onchange = this.OnChange;
+        this.Select.onchange = this.OnSelectChange;
         // Perform the actions to select the default node.
-        this.OnChange();
+        this.OnSelectChange();
         // Styles.
         this.AddCssRules();
     }
-    Object.defineProperty(ModesControl.prototype, "HtmlElement", {
+    ModesControl.GetIndexOfModeByModeInfo = function (modeInfo) {
+        var output = ModesControl.GetIndexOfModeByModeID(modeInfo.ID);
+        return output;
+    };
+    ModesControl.GetIndexOfModeByModeID = function (id) {
+        for (var iMode = 0; iMode < ModesControl.ModeInfos.length; iMode++) {
+            var element = ModesControl.ModeInfos[iMode];
+            if (element.ID == id) {
+                return iMode;
+            }
+        }
+        console.error('Mode ID not found: ' + id);
+    };
+    Object.defineProperty(ModesControl.prototype, "ModeChanged", {
         get: function () {
-            return this.zHtmlElement;
+            return this.zModeChanged.AsEvent();
         },
         enumerable: true,
         configurable: true
     });
     ModesControl.prototype.AddCssRules = function () {
         var rule;
-        rule = "\n        width: 100px;\n        ";
-        this.StyleSheet.addRule('#' + ModesControl.HtmlElementId + ' select', rule);
+        rule = "\n        width: 100px;\n        align: left;\n        ";
+        this.StyleSheet.addRule('#' + ModesControl.SelectHtmlElementId, rule);
     };
-    ModesControl.prototype.SetSelectedIndex = function (index) {
-        this.Select.selectedIndex = index;
-        this.OnChange();
+    ModesControl.prototype.SetDefaultMode = function () {
+        this.SetCurrentModeByID(NoneMode_1.NoneMode.ID);
+    };
+    ModesControl.prototype.SetCurrentModeByIndex = function (index) {
+        if (this.Select.selectedIndex !== index) {
+            this.Select.selectedIndex = index;
+            this.OnSelectChange();
+        }
+    };
+    ModesControl.prototype.SetCurrentModeByID = function (id) {
+        var index = ModesControl.GetIndexOfModeByModeID(id);
+        if (this.Select.selectedIndex !== index) {
+            this.Select.selectedIndex = index;
+            this.OnSelectChange();
+        }
     };
     ModesControl.HtmlElementId = 'ModesControl';
     ModesControl.SelectHtmlElementId = 'ModesControl-Select';
+    ModesControl.ModeInfos = [
+        new Mode_1.ModeInfo(NoneMode_1.NoneMode.ID, 'None'),
+        new Mode_1.ModeInfo(InfoMode_1.InfoMode.ID, 'Info'),
+        new Mode_1.ModeInfo(SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.ID, 'Set Preferred Coordinate System'),
+        new Mode_1.ModeInfo(SetPreferredCameraSpecificationMode_1.SetPreferredCameraSpecificationMode.ID, 'Set Preferred Camera Specification'),
+        new Mode_1.ModeInfo('annotate', 'Annotate'),
+        new Mode_1.ModeInfo(SelfDisposingMode_1.SelfDisposingMode.ID, 'Self Disposing'),
+        new Mode_1.ModeInfo(SetLightsMode_1.SetLightsMode.ID, 'Set Lights'),
+        new Mode_1.ModeInfo(PointMode_1.PointMode.ID, 'Point Mode'),
+    ];
     return ModesControl;
 }());
 exports.ModesControl = ModesControl;
@@ -52819,14 +53373,14 @@ var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Contr
 var ScratchControl = /** @class */ (function () {
     function ScratchControl(controlPanel) {
         this.HtmlElement = document.createElement('div');
-        this.HtmlElement.id = ScratchControl.HtmlElementId;
-        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
         controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = ScratchControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
         var title = document.createElement('p');
+        this.HtmlElement.appendChild(title);
         title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
         title.innerHTML = 'Scratch';
-        this.HtmlElement.appendChild(title);
-        this.zButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Button', ScratchControl.ButtonHtmlElementId);
+        this.zButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Button', ScratchControl.ButtonHtmlElementID);
     }
     Object.defineProperty(ScratchControl.prototype, "message", {
         get: function () {
@@ -52846,11 +53400,371 @@ var ScratchControl = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    ScratchControl.HtmlElementId = 'ScratchControl';
-    ScratchControl.ButtonHtmlElementId = 'ScratchControl-Button';
+    ScratchControl.HtmlElementID = 'ScratchControl';
+    ScratchControl.ButtonHtmlElementID = 'ScratchControl-Button';
     return ScratchControl;
 }());
 exports.ScratchControl = ScratchControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/SetAmbientLightControl.js":
+/*!***************************************************!*\
+  !*** ./src/ts/Controls/SetAmbientLightControl.js ***!
+  \***************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var SetAmbientLightControl = /** @class */ (function () {
+    function SetAmbientLightControl(controlPanel, lightingSpecification) {
+        var _this = this;
+        this.datGui = null;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.OnOffClick = function () {
+            _this.LightingSpecification.AmbientOn = !_this.LightingSpecification.AmbientOn;
+            _this.LightingSpecification.OnChange();
+        };
+        this.Modify = false;
+        this.ModifyClick = function () {
+            _this.Modify = !_this.Modify;
+            if (_this.Modify) {
+                _this.AddDatGUI();
+            }
+            else {
+                _this.RemoveDatGUI();
+            }
+        };
+        this.LightingSpecification = lightingSpecification;
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = SetAmbientLightControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        var title = document.createElement('p');
+        this.HtmlElement.appendChild(title);
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Ambient Light';
+        this.OnOffButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'On/Off');
+        this.OnOffButton.Click.Subscribe(this.OnOffClick);
+        this.ModifyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Modify');
+        this.ModifyButton.Click.Subscribe(this.ModifyClick);
+    }
+    Object.defineProperty(SetAmbientLightControl.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetAmbientLightControl.prototype.AddDatGUI = function () {
+        var _this = this;
+        this.datGui = new dat.GUI(); // No intellisense support here, but does work.
+        var directional = this.datGui.addFolder('Ambient Light');
+        directional.open();
+        var directionalIntensity = directional.add(this.LightingSpecification, 'AmbientIntensity', 0, 2);
+        directionalIntensity.listen();
+        directionalIntensity.onChange(function () {
+            _this.LightingSpecification.OnChange();
+        });
+    };
+    SetAmbientLightControl.prototype.RemoveDatGUI = function () {
+        if (this.datGui) {
+            this.datGui.destroy();
+            this.datGui = null;
+        }
+    };
+    SetAmbientLightControl.prototype.Dispose = function () {
+        this.HtmlElement.remove();
+        this.RemoveDatGUI();
+        this.zDisposed.Dispatch();
+    };
+    SetAmbientLightControl.HtmlElementID = 'AmbientLightControl';
+    return SetAmbientLightControl;
+}());
+exports.SetAmbientLightControl = SetAmbientLightControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/SetDirectionalLightControl.js":
+/*!*******************************************************!*\
+  !*** ./src/ts/Controls/SetDirectionalLightControl.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var SetDirectionalLightControl = /** @class */ (function () {
+    function SetDirectionalLightControl(controlPanel, lightingSpecification) {
+        var _this = this;
+        this.datGui = null;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.OnOffClick = function () {
+            _this.LightingSpecification.DirectionalOn = !_this.LightingSpecification.DirectionalOn;
+            _this.OnValueChanged();
+        };
+        this.Modify = false;
+        this.ModifyClick = function () {
+            _this.Modify = !_this.Modify;
+            if (_this.Modify) {
+                _this.AddDatGUI();
+            }
+            else {
+                _this.RemoveDatGUI();
+            }
+        };
+        this.OnValueChanged = function () {
+            _this.LightingSpecification.OnChange();
+        };
+        this.LightingSpecification = lightingSpecification;
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = SetDirectionalLightControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        var title = document.createElement('p');
+        this.HtmlElement.appendChild(title);
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Directional Light';
+        this.OnOffButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'On/Off');
+        this.OnOffButton.Click.Subscribe(this.OnOffClick);
+        this.ModifyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Modify');
+        this.ModifyButton.Click.Subscribe(this.ModifyClick);
+    }
+    Object.defineProperty(SetDirectionalLightControl.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetDirectionalLightControl.prototype.AddDatGUI = function () {
+        this.datGui = new dat.GUI(); // No intellisense support here, but does work.
+        var directional = this.datGui.addFolder('Directional');
+        directional.open();
+        var directionalIntensity = directional.add(this.LightingSpecification, 'DirectionalIntensity', 0, 2);
+        directionalIntensity.listen();
+        directionalIntensity.onChange(this.OnValueChanged);
+        var directionalPosition = directional.addFolder('Position');
+        directionalPosition.open();
+        var directionalPositionX = directionalPosition.add(this.LightingSpecification.DirectionalPosition, 'x', -1, 1);
+        directionalPositionX.listen();
+        directionalPositionX.onChange(this.OnValueChanged);
+        var directionalPositionY = directionalPosition.add(this.LightingSpecification.DirectionalPosition, 'y', -1, 1);
+        directionalPositionY.listen();
+        directionalPositionY.onChange(this.OnValueChanged);
+        var directionalPositionZ = directionalPosition.add(this.LightingSpecification.DirectionalPosition, 'z', -1, 1);
+        directionalPositionZ.listen();
+        directionalPositionZ.onChange(this.OnValueChanged);
+    };
+    SetDirectionalLightControl.prototype.RemoveDatGUI = function () {
+        if (this.datGui) {
+            this.datGui.destroy();
+            this.datGui = null;
+        }
+    };
+    SetDirectionalLightControl.prototype.Dispose = function () {
+        this.HtmlElement.remove();
+        this.RemoveDatGUI();
+        this.zDisposed.Dispatch();
+    };
+    SetDirectionalLightControl.HtmlElementID = 'SetDirectionalLightControl';
+    return SetDirectionalLightControl;
+}());
+exports.SetDirectionalLightControl = SetDirectionalLightControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/SetLightLoadSaveControl.js":
+/*!****************************************************!*\
+  !*** ./src/ts/Controls/SetLightLoadSaveControl.js ***!
+  \****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var SetLightLoadSaveControl = /** @class */ (function () {
+    function SetLightLoadSaveControl(controlPanel, lightingSpecification) {
+        var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.CancelClick = function () {
+            _this.LightingSpecification.Copy(_this.OriginalLightingSpecification);
+            _this.LightingSpecification.OnChange();
+            _this.Dispose();
+        };
+        this.LoadClick = function () {
+            var exists = LocalStorageManager_1.LocalStorageManager.LightingSpecificationExists();
+            if (!exists) {
+                alert('No lighting specification found.');
+                return;
+            }
+            var specification = LocalStorageManager_1.LocalStorageManager.LoadLightingSpecification();
+            specification.AdjustToPreferredCoordinateSystem(Application_1.Application.PreferredCoordinateSystem.Value);
+            _this.LightingSpecification.Copy(specification);
+            _this.LightingSpecification.OnChange();
+        };
+        this.SaveClick = function () {
+            var specification = _this.LightingSpecification.Clone();
+            specification.AdjustToStandardCoordinateSystem(Application_1.Application.PreferredCoordinateSystem.Value);
+            LocalStorageManager_1.LocalStorageManager.SaveLightingSpecification(specification);
+        };
+        this.FinishedClick = function () {
+            _this.SaveClick(); // Save.
+            _this.Dispose();
+        };
+        this.IsDisposed = false;
+        this.LightingSpecification = lightingSpecification;
+        this.OriginalLightingSpecification = this.LightingSpecification.Clone(); // For cancellation, create a copy of the lighting specification that can be copied back.
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = SetLightLoadSaveControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        this.LoadButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Load');
+        this.LoadButton.Click.Subscribe(this.LoadClick);
+        this.SaveButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Save');
+        this.SaveButton.Click.Subscribe(this.SaveClick);
+        this.FinishedButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Finished');
+        this.FinishedButton.Click.Subscribe(this.FinishedClick);
+        this.CancelButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Cancel');
+        this.CancelButton.Click.Subscribe(this.CancelClick);
+    }
+    Object.defineProperty(SetLightLoadSaveControl.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetLightLoadSaveControl.prototype.Dispose = function () {
+        if (this.IsDisposed) {
+            return;
+        }
+        this.HtmlElement.remove();
+        this.IsDisposed = true;
+        this.zDisposed.Dispatch();
+    };
+    SetLightLoadSaveControl.HtmlElementID = 'SetLightLoadSave';
+    return SetLightLoadSaveControl;
+}());
+exports.SetLightLoadSaveControl = SetLightLoadSaveControl;
+
+
+/***/ }),
+
+/***/ "./src/ts/Controls/SetPointLightControl.js":
+/*!*************************************************!*\
+  !*** ./src/ts/Controls/SetPointLightControl.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var ControlPanel_1 = __webpack_require__(/*! ./ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ButtonControl_1 = __webpack_require__(/*! ./ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var SetPointLightControl = /** @class */ (function () {
+    function SetPointLightControl(controlPanel, lightingSpecification) {
+        var _this = this;
+        this.datGui = null;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.AddRemoveClick = function () {
+            _this.LightingSpecification.PointOn = !_this.LightingSpecification.PointOn;
+            _this.OnValueChanged();
+        };
+        this.Modify = false;
+        this.ModifyClick = function () {
+            _this.Modify = !_this.Modify;
+            if (_this.Modify) {
+                _this.AddDatGUI();
+            }
+            else {
+                _this.RemoveDatGUI();
+            }
+        };
+        this.OnValueChanged = function () {
+            _this.LightingSpecification.OnChange();
+        };
+        this.LightingSpecification = lightingSpecification;
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = SetPointLightControl.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        var title = document.createElement('p');
+        this.HtmlElement.appendChild(title);
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Point Light';
+        this.OnOffButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'On/Off');
+        this.OnOffButton.Click.Subscribe(this.AddRemoveClick);
+        this.ModifyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Modify');
+        this.ModifyButton.Click.Subscribe(this.ModifyClick);
+    }
+    Object.defineProperty(SetPointLightControl.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetPointLightControl.prototype.AddDatGUI = function () {
+        this.datGui = new dat.GUI(); // No intellisense support here, but does work.
+        var directional = this.datGui.addFolder('Point Light');
+        directional.open();
+        var pointIntensity = directional.add(this.LightingSpecification, 'PointIntensity', 0, 2);
+        pointIntensity.listen();
+        pointIntensity.onChange(this.OnValueChanged);
+        var pointPosition = directional.addFolder('Position');
+        pointPosition.open();
+        var pointPositionX = pointPosition.add(this.LightingSpecification.PointLocation, 'x');
+        pointPositionX.listen();
+        pointPositionX.onChange(this.OnValueChanged);
+        var pointPositionY = pointPosition.add(this.LightingSpecification.PointLocation, 'y');
+        pointPositionY.listen();
+        pointPositionY.onChange(this.OnValueChanged);
+        var pointPositionZ = pointPosition.add(this.LightingSpecification.PointLocation, 'z');
+        pointPositionZ.listen();
+        pointPositionZ.onChange(this.OnValueChanged);
+    };
+    SetPointLightControl.prototype.RemoveDatGUI = function () {
+        if (this.datGui) {
+            this.datGui.destroy();
+            this.datGui = null;
+        }
+    };
+    SetPointLightControl.prototype.Dispose = function () {
+        this.HtmlElement.remove();
+        this.RemoveDatGUI();
+        this.zDisposed.Dispatch();
+    };
+    SetPointLightControl.HtmlElementID = 'SetDirectionalLightControl';
+    return SetPointLightControl;
+}());
+exports.SetPointLightControl = SetPointLightControl;
 
 
 /***/ }),
@@ -52932,38 +53846,84 @@ exports.WebGLDetectorControl = WebGLDetectorControl;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
 var CoordinateSystemConversion = /** @class */ (function () {
-    function CoordinateSystemConversion(translation, rotation, scale) {
-        if (translation === void 0) { translation = new three_1.Vector3(); }
-        if (rotation === void 0) { rotation = new three_1.Vector3(); }
-        if (scale === void 0) { scale = 1; }
-        this.Translation = translation;
-        this.Rotation = rotation;
-        this.Scale = scale;
+    function CoordinateSystemConversion(Translation, Rotation, Scale) {
+        if (Translation === void 0) { Translation = new three_1.Vector3(); }
+        if (Rotation === void 0) { Rotation = new three_1.Vector3(); }
+        if (Scale === void 0) { Scale = 1; }
+        this.Translation = Translation;
+        this.Rotation = Rotation;
+        this.Scale = Scale;
     }
+    CoordinateSystemConversion.ConvertPointStandardToPreferred = function (point, standardToPreferred) {
+        var transformation = CoordinateSystemConversion.TransformationStandardToPreferred(standardToPreferred);
+        var output = point.clone();
+        output.applyMatrix4(transformation);
+        return output;
+    };
+    CoordinateSystemConversion.ConvertPointPreferredToStandard = function (point, standardToPreferred) {
+        var transformation = CoordinateSystemConversion.TransformationPreferredToStandard(standardToPreferred);
+        var output = point.clone();
+        output.applyMatrix4(transformation);
+        return output;
+    };
+    CoordinateSystemConversion.TransformationStandardToPreferred = function (standardToPreferred) {
+        var rotationStandardToPreferred = CoordinateSystemConversion.RotationStandardToPreferred(standardToPreferred);
+        var translationStandardToPreferred = CoordinateSystemConversion.TranslationStandardToPreferred(standardToPreferred);
+        var transformation = new three_1.Matrix4();
+        transformation.premultiply(translationStandardToPreferred);
+        transformation.premultiply(rotationStandardToPreferred);
+        return transformation;
+    };
+    CoordinateSystemConversion.TransformationPreferredToStandard = function (standardToPreferred) {
+        var rotationPreferredToStandard = CoordinateSystemConversion.RotationPreferredToStandard(standardToPreferred);
+        var translationPreferredToStandard = CoordinateSystemConversion.TranslationPreferredToStandard(standardToPreferred);
+        var transformation = new three_1.Matrix4();
+        transformation.premultiply(rotationPreferredToStandard);
+        transformation.premultiply(translationPreferredToStandard);
+        return transformation;
+    };
+    CoordinateSystemConversion.TranslationStandardToPreferred = function (standardToPreferred) {
+        var translationM = new three_1.Matrix4();
+        translationM.makeTranslation(standardToPreferred.Translation.x, standardToPreferred.Translation.y, standardToPreferred.Translation.z);
+        return translationM;
+    };
+    CoordinateSystemConversion.TranslationPreferredToStandard = function (standardToPreferred) {
+        var translationM = new three_1.Matrix4();
+        translationM.makeTranslation(-standardToPreferred.Translation.x, -standardToPreferred.Translation.y, -standardToPreferred.Translation.z);
+        return translationM;
+    };
+    CoordinateSystemConversion.RotationStandardToPreferred = function (standardToPreferred) {
+        var rotationEuler = new three_1.Euler();
+        rotationEuler.setFromVector3(standardToPreferred.Rotation);
+        var rotationM = new three_1.Matrix4();
+        rotationM.makeRotationFromEuler(rotationEuler);
+        return rotationM;
+    };
+    CoordinateSystemConversion.RotationPreferredToStandard = function (standardToPreferred) {
+        var rotationStandardToPreferred = CoordinateSystemConversion.RotationStandardToPreferred(standardToPreferred);
+        var rotationPreferredToStandard = new three_1.Matrix4();
+        rotationPreferredToStandard.getInverse(rotationStandardToPreferred);
+        return rotationPreferredToStandard;
+    };
     // Returns a JS object with no frills that can be easily JSON-stringified.
     CoordinateSystemConversion.prototype.ToObject = function () {
+        var translation = StorageVector3_1.StorageVector3.ToObject(this.Translation);
+        var rotation = StorageVector3_1.StorageVector3.ToObject(this.Rotation);
         var output = {
-            Translation: {
-                x: this.Translation.x,
-                y: this.Translation.y,
-                z: this.Translation.z,
-            },
-            Rotation: {
-                x: this.Rotation.x,
-                y: this.Rotation.y,
-                z: this.Rotation.z,
-            },
+            Translation: translation,
+            Rotation: rotation,
             Scale: this.Scale,
         };
         return output;
     };
     // Parses a JS object with no frills that may have come from JSON-parsing.
     CoordinateSystemConversion.prototype.FromObject = function (object) {
-        var objTranslation = object.Translation;
-        this.Translation.set(objTranslation.x, objTranslation.y, objTranslation.z);
-        var objRotation = object.Rotation;
-        this.Rotation.set(objRotation.x, objRotation.y, objRotation.z);
+        var translation = StorageVector3_1.StorageVector3.FromObject(object.Translation);
+        this.Translation.copy(translation);
+        var rotation = StorageVector3_1.StorageVector3.FromObject(object.Rotation);
+        this.Rotation.copy(rotation);
         this.Scale = object.Scale;
     };
     CoordinateSystemConversion.prototype.GetTransformationMatrix = function () {
@@ -52991,6 +53951,159 @@ var CoordinateSystemConversion = /** @class */ (function () {
     return CoordinateSystemConversion;
 }());
 exports.CoordinateSystemConversion = CoordinateSystemConversion;
+
+
+/***/ }),
+
+/***/ "./src/ts/Lighting.js":
+/*!****************************!*\
+  !*** ./src/ts/Lighting.js ***!
+  \****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var LightingSpecification_1 = __webpack_require__(/*! ./LightingSpecification */ "./src/ts/LightingSpecification.js");
+var Lighting = /** @class */ (function () {
+    function Lighting(scene) {
+        var _this = this;
+        this.AmbientLight = new three_1.AmbientLight(0xffffff);
+        this.DirectionalLight = new three_1.DirectionalLight(0xffffff);
+        this.PointLight = new three_1.PointLight(0xffffff);
+        this.Specification = new LightingSpecification_1.LightingSpecification();
+        this.OnSpecificationChanged = function () {
+            _this.ApplySpecification(_this.Specification);
+        };
+        scene.add(this.AmbientLight);
+        scene.add(this.DirectionalLight);
+        scene.add(this.PointLight);
+        this.Specification.Changed.Subscribe(this.OnSpecificationChanged);
+        this.Specification.SetDefaults();
+        this.Specification.OnChange();
+    }
+    Lighting.prototype.ApplySpecification = function (specification) {
+        this.AmbientLight.visible = specification.AmbientOn;
+        this.AmbientLight.intensity = specification.AmbientIntensity;
+        this.DirectionalLight.visible = specification.DirectionalOn;
+        this.DirectionalLight.intensity = specification.DirectionalIntensity;
+        this.DirectionalLight.position.copy(specification.DirectionalPosition);
+        this.PointLight.visible = specification.PointOn;
+        this.PointLight.intensity = specification.PointIntensity;
+        this.PointLight.position.copy(specification.PointLocation);
+    };
+    return Lighting;
+}());
+exports.Lighting = Lighting;
+
+
+/***/ }),
+
+/***/ "./src/ts/LightingSpecification.js":
+/*!*****************************************!*\
+  !*** ./src/ts/LightingSpecification.js ***!
+  \*****************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var SignalEvent_1 = __webpack_require__(/*! ./Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var LightingSpecification = /** @class */ (function () {
+    function LightingSpecification() {
+        this.zChanged = new SignalEvent_1.SignalEvent();
+        this.DirectionalPosition = new three_1.Vector3();
+        this.PointLocation = new three_1.Vector3();
+    }
+    Object.defineProperty(LightingSpecification.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    LightingSpecification.prototype.SetDefaults = function () {
+        this.AmbientOn = true;
+        this.AmbientIntensity = 1;
+        this.DirectionalOn = false;
+        this.DirectionalIntensity = 1;
+        this.DirectionalPosition.set(0, 1, 0); // Default for the DirectionalLight.
+        this.PointOn = false;
+        this.PointIntensity = 1;
+        this.PointLocation.set(0, 0, 0);
+    };
+    /**
+     * Allow clients to inform other clients of changes.
+     */
+    LightingSpecification.prototype.OnChange = function () {
+        this.zChanged.Dispatch();
+    };
+    LightingSpecification.prototype.Clone = function () {
+        var output = new LightingSpecification();
+        output.Copy(this);
+        return output;
+    };
+    LightingSpecification.prototype.Copy = function (other) {
+        this.AmbientOn = other.AmbientOn;
+        this.AmbientIntensity = other.AmbientIntensity;
+        this.DirectionalOn = other.DirectionalOn;
+        this.DirectionalIntensity = other.DirectionalIntensity;
+        this.DirectionalPosition.copy(other.DirectionalPosition);
+        this.PointOn = other.PointOn;
+        this.PointIntensity = other.PointIntensity;
+        this.PointLocation.copy(other.PointLocation);
+    };
+    LightingSpecification.prototype.ToObject = function () {
+        var directionalDirection = StorageVector3_1.StorageVector3.ToObjFromVector3(this.DirectionalPosition);
+        var pointLocation = StorageVector3_1.StorageVector3.ToObjFromVector3(this.PointLocation);
+        var output = {
+            AmbientOn: this.AmbientOn,
+            AmbientIntensity: this.AmbientIntensity,
+            DirectionalOn: this.DirectionalOn,
+            DirectionalIntensity: this.DirectionalIntensity,
+            DirectionalPosition: directionalDirection,
+            PointOn: this.PointOn,
+            PointIntensity: this.PointIntensity,
+            PointLocation: pointLocation,
+        };
+        return output;
+    };
+    LightingSpecification.prototype.FromObject = function (obj) {
+        this.AmbientOn = obj.AmbientOn;
+        this.AmbientIntensity = obj.AmbientIntensity;
+        this.DirectionalOn = obj.DirectionalOn;
+        this.DirectionalIntensity = obj.DirectionalIntensity;
+        this.DirectionalPosition.set(obj.DirectionalPosition.X, obj.DirectionalPosition.Y, obj.DirectionalPosition.Z);
+        this.PointOn = obj.PointOn;
+        this.PointIntensity = obj.PointIntensity;
+        this.PointLocation.set(obj.PointLocation.X, obj.PointLocation.Y, obj.PointLocation.Z);
+        this.OnChange();
+    };
+    LightingSpecification.prototype.AdjustToPreferredCoordinateSystem = function (standardToPreferred) {
+        var standardDirectionalPosition = this.DirectionalPosition.clone();
+        var prefDirectionalPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardDirectionalPosition, standardToPreferred);
+        this.DirectionalPosition.copy(prefDirectionalPosition);
+        var standardPointLocation = this.PointLocation.clone();
+        var prefPointLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPointLocation, standardToPreferred);
+        this.PointLocation.copy(prefPointLocation);
+    };
+    LightingSpecification.prototype.AdjustToStandardCoordinateSystem = function (standardToPreferred) {
+        var prefDirectionalPosition = this.DirectionalPosition.clone();
+        var standardDirectionalPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(prefDirectionalPosition, standardToPreferred);
+        this.DirectionalPosition.copy(standardDirectionalPosition);
+        var prefPointLocation = this.PointLocation;
+        var standardPointLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(prefPointLocation, standardToPreferred);
+        this.PointLocation.copy(standardPointLocation);
+    };
+    return LightingSpecification;
+}());
+exports.LightingSpecification = LightingSpecification;
 
 
 /***/ }),
@@ -53052,11 +54165,53 @@ exports.LoadingBlocker = LoadingBlocker;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var CameraSpecification_1 = __webpack_require__(/*! ./CameraSpecification */ "./src/ts/CameraSpecification.js");
+var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var LightingSpecification_1 = __webpack_require__(/*! ./LightingSpecification */ "./src/ts/LightingSpecification.js");
 var LocalStorageManager = /** @class */ (function () {
     function LocalStorageManager() {
     }
-    LocalStorageManager.PreferredCameraPositionExists = function () {
-        var output = LocalStorageManager.PreferredCameraPositionName in localStorage;
+    LocalStorageManager.LightingSpecificationExists = function () {
+        var output = LocalStorageManager.LightingSpecificationName in localStorage;
+        return output;
+    };
+    LocalStorageManager.LoadLightingSpecification = function () {
+        var exists = LocalStorageManager.LightingSpecificationExists();
+        if (!exists) {
+            return null;
+        }
+        var json = localStorage.getItem(LocalStorageManager.LightingSpecificationName);
+        var obj = JSON.parse(json);
+        var output = new LightingSpecification_1.LightingSpecification();
+        output.FromObject(obj);
+        return output;
+    };
+    LocalStorageManager.SaveLightingSpecification = function (lightingSpecification) {
+        var obj = lightingSpecification.ToObject();
+        var json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.LightingSpecificationName, json);
+    };
+    LocalStorageManager.PointLocationExists = function () {
+        var output = LocalStorageManager.PointLocationName in localStorage;
+        return output;
+    };
+    LocalStorageManager.LoadPointLocation = function () {
+        var exists = LocalStorageManager.PointLocationExists();
+        if (!exists) {
+            return null;
+        }
+        var json = localStorage.getItem(LocalStorageManager.PointLocationName);
+        var obj = JSON.parse(json);
+        var output = StorageVector3_1.StorageVector3.ToVector3FromObj(obj);
+        return output;
+    };
+    LocalStorageManager.SavePointLocation = function (point) {
+        var obj = StorageVector3_1.StorageVector3.ToObjFromVector3(point);
+        var json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.PointLocationName, json);
+    };
+    LocalStorageManager.PreferredCameraSpecificationExists = function () {
+        var output = LocalStorageManager.PreferredCameraSpecificationName in localStorage;
         return output;
     };
     /**
@@ -53064,21 +54219,21 @@ var LocalStorageManager = /** @class */ (function () {
      *
      * If the value is not present, returns null.
      */
-    LocalStorageManager.LoadPreferredCameraPosition = function () {
-        var exists = LocalStorageManager.PreferredCameraPositionExists();
+    LocalStorageManager.LoadPreferredCameraSpecification = function () {
+        var exists = LocalStorageManager.PreferredCameraSpecificationExists();
         if (!exists) {
             return null;
         }
-        var json = localStorage.getItem(LocalStorageManager.PreferredCameraPositionName);
+        var json = localStorage.getItem(LocalStorageManager.PreferredCameraSpecificationName);
         var obj = JSON.parse(json);
-        var output = new CoordinateSystemConversion_1.CoordinateSystemConversion();
+        var output = new CameraSpecification_1.CameraSpecification();
         output.FromObject(obj);
         return output;
     };
-    LocalStorageManager.SavePreferredCameraPosition = function (coordinateSystem) {
-        var obj = coordinateSystem.ToObject();
+    LocalStorageManager.SavePreferredCameraSpecification = function (cameraSpecification) {
+        var obj = cameraSpecification.ToObject();
         var json = JSON.stringify(obj);
-        localStorage.setItem(LocalStorageManager.PreferredCameraPositionName, json);
+        localStorage.setItem(LocalStorageManager.PreferredCameraSpecificationName, json);
     };
     LocalStorageManager.PreferredCoordinateSystemExists = function () {
         var output = LocalStorageManager.PreferredCoordinateSystemName in localStorage;
@@ -53106,7 +54261,9 @@ var LocalStorageManager = /** @class */ (function () {
         localStorage.setItem(LocalStorageManager.PreferredCoordinateSystemName, json);
     };
     LocalStorageManager.PreferredCoordinateSystemName = 'PreferredCoordinateSystem';
-    LocalStorageManager.PreferredCameraPositionName = 'PreferredCameraPosition';
+    LocalStorageManager.PreferredCameraSpecificationName = 'PreferredCameraSpecification';
+    LocalStorageManager.PointLocationName = 'PointLocation';
+    LocalStorageManager.LightingSpecificationName = 'LightingSpecification';
     return LocalStorageManager;
 }());
 exports.LocalStorageManager = LocalStorageManager;
@@ -53127,7 +54284,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 __webpack_require__(/*! three/MTLLoader */ "./node_modules/three/examples/js/loaders/MTLLoader.js");
 __webpack_require__(/*! three/OBJLoader */ "./node_modules/three/examples/js/loaders/OBJLoader.js");
-var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
 var Miniature = /** @class */ (function () {
     function Miniature(theater, path, objFileName, mtlFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler) {
         if (loadingProgressHandler === void 0) { loadingProgressHandler = Miniature.DefaultLoadingProgressHandler; }
@@ -53183,19 +54339,6 @@ var Miniature = /** @class */ (function () {
         // this.ComputeScaleAndOffset();
         // this.PositionObject();
     };
-    // Position the loaded object in the center of the screen.
-    Miniature.prototype.PositionObject = function () {
-        this.Object.scale.copy(this.Scale);
-        this.Object.position.copy(this.Offset);
-    };
-    // The miniature needs to be scaled to be visible and positioned such that it's center is at the origin. Compute these values.
-    Miniature.prototype.ComputeScaleAndOffset = function () {
-        var scaleValue = Constants_1.Constants.ModestDistance / this.Radius;
-        this.Scale.set(scaleValue, scaleValue, scaleValue);
-        var scaledCenter = this.Center.clone().multiplyScalar(scaleValue);
-        var positionForCenterAtOrigin = scaledCenter.clone().negate();
-        this.Offset.copy(positionForCenterAtOrigin);
-    };
     return Miniature;
 }());
 exports.Miniature = Miniature;
@@ -53213,6 +54356,7 @@ exports.Miniature = Miniature;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ./Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 /**
  * A static class for showing and hiding a modal.
  *
@@ -53254,6 +54398,13 @@ var Modal = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Modal, "Closed", {
+        get: function () {
+            return Modal.zClosed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
     Modal.Initialize = function () {
         Modal.BuildHtml();
         Modal.AddStyle();
@@ -53266,6 +54417,7 @@ var Modal = /** @class */ (function () {
         Modal.RootHtmlElement.remove();
         Modal.Style.remove();
         window.removeEventListener('click', Modal.OnOutsideClick);
+        this.zClosed.Dispatch();
     };
     Modal.WireEvents = function () {
         // Listen for the inside close button click.
@@ -53300,6 +54452,7 @@ var Modal = /** @class */ (function () {
         footer.id = Modal.FooterHtmlElementID;
         Modal.FooterMessageHtmlElement = document.createElement('h3');
         footer.appendChild(Modal.FooterMessageHtmlElement);
+        footer.innerHTML = Modal.DefaultFooterMessage;
     };
     /**
      * Adds the CSS styling for all elements.
@@ -53336,6 +54489,8 @@ var Modal = /** @class */ (function () {
     Modal.CloseButtonHtmlElementID = 'Modal-CloseButton';
     Modal.BodyHtmlElementID = 'Modal-Body';
     Modal.FooterHtmlElementID = 'Modal-Footer';
+    Modal.DefaultFooterMessage = 'Click outside to close';
+    Modal.zClosed = new SignalEvent_1.SignalEvent();
     Modal.OnOutsideClick = function (ev) {
         if (ev.target === Modal.RootHtmlElement) {
             Modal.Hide();
@@ -53358,25 +54513,32 @@ exports.Modal = Modal;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var WebGLDetectorControl_1 = __webpack_require__(/*! ../Controls/WebGLDetectorControl */ "./src/ts/Controls/WebGLDetectorControl.js");
 var InfoMode = /** @class */ (function () {
     function InfoMode(controlPanel) {
+        this.zDisposed = new SignalEvent_1.SignalEvent();
         this.WebGLDetectorControl = new WebGLDetectorControl_1.WebGLDetectorControl(controlPanel.HtmlElement);
     }
-    Object.defineProperty(InfoMode.prototype, "ModeInfo", {
+    Object.defineProperty(InfoMode.prototype, "ID", {
         get: function () {
-            return InfoMode.Info;
+            return InfoMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(InfoMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
         },
         enumerable: true,
         configurable: true
     });
     InfoMode.prototype.Dispose = function () {
         this.WebGLDetectorControl.HtmlElement.remove();
+        this.zDisposed.Dispatch();
     };
     InfoMode.ID = 'info';
-    InfoMode.Description = 'Info';
-    InfoMode.Info = new Mode_1.ModeInfo(InfoMode.ID, InfoMode.Description);
     return InfoMode;
 }());
 exports.InfoMode = InfoMode;
@@ -53431,56 +54593,45 @@ exports.ModeInfo = ModeInfo;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var InfoMode_1 = __webpack_require__(/*! ./InfoMode */ "./src/ts/Modes/InfoMode.js");
-var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
 var NoneMode_1 = __webpack_require__(/*! ./NoneMode */ "./src/ts/Modes/NoneMode.js");
 var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
-var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
+var SetPreferredCameraSpecificationMode_1 = __webpack_require__(/*! ./SetPreferredCameraSpecificationMode */ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js");
+var SelfDisposingMode_1 = __webpack_require__(/*! ./SelfDisposingMode */ "./src/ts/Modes/SelfDisposingMode.js");
+var SetLightsMode_1 = __webpack_require__(/*! ./SetLightsMode */ "./src/ts/Modes/SetLightsMode.js");
+var PointMode_1 = __webpack_require__(/*! ./PointMode */ "./src/ts/Modes/PointMode.js");
 var ModeFactory = /** @class */ (function () {
     function ModeFactory(controlPanel) {
         this.ControlPanel = controlPanel;
     }
-    ModeFactory.GetIndexOfModeByModeInfo = function (modeInfo) {
-        var output = ModeFactory.GetIndexOfModeByModeID(modeInfo.ID);
-        return output;
-    };
-    ModeFactory.GetIndexOfModeByModeID = function (id) {
-        for (var iMode = 0; iMode < ModeFactory.ModeInfos.length; iMode++) {
-            var element = ModeFactory.ModeInfos[iMode];
-            if (element.ID == id) {
-                return iMode;
-            }
-        }
-    };
-    ModeFactory.prototype.GetModeByID = function (id) {
+    ModeFactory.prototype.Construct = function (id) {
         var output;
         switch (id) {
             case InfoMode_1.InfoMode.ID:
                 output = new InfoMode_1.InfoMode(this.ControlPanel);
                 break;
-            case SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.ID:
-                output = new SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode(this.ControlPanel);
+            case PointMode_1.PointMode.ID:
+                output = new PointMode_1.PointMode(this.ControlPanel);
+                break;
+            case SelfDisposingMode_1.SelfDisposingMode.ID:
+                output = new SelfDisposingMode_1.SelfDisposingMode(this.ControlPanel);
+                break;
+            case SetLightsMode_1.SetLightsMode.ID:
+                output = new SetLightsMode_1.SetLightsMode(this.ControlPanel);
+                break;
+            case SetPreferredCameraSpecificationMode_1.SetPreferredCameraSpecificationMode.ID:
+                output = new SetPreferredCameraSpecificationMode_1.SetPreferredCameraSpecificationMode(this.ControlPanel);
                 break;
             case SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.ID:
                 output = new SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode(this.ControlPanel);
                 break;
-            case NoneMode_1.NoneMode.ID:
             default:
+                console.warn('ModeFactory - No constructor for mode ID: ' + id);
+            case NoneMode_1.NoneMode.ID:
                 output = new NoneMode_1.NoneMode();
                 break;
         }
         return output;
     };
-    ModeFactory.prototype.GetModeByModeInfo = function (modeInfo) {
-        var output = this.GetModeByID(modeInfo.ID);
-        return output;
-    };
-    ModeFactory.ModeInfos = [
-        NoneMode_1.NoneMode.Info,
-        InfoMode_1.InfoMode.Info,
-        SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.Info,
-        SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info,
-        new Mode_1.ModeInfo('annotate', 'Annotate'),
-    ];
     return ModeFactory;
 }());
 exports.ModeFactory = ModeFactory;
@@ -53498,23 +54649,31 @@ exports.ModeFactory = ModeFactory;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var NoneMode = /** @class */ (function () {
     function NoneMode() {
+        this.zDisposed = new SignalEvent_1.SignalEvent();
     }
-    Object.defineProperty(NoneMode.prototype, "ModeInfo", {
+    Object.defineProperty(NoneMode.prototype, "ID", {
         get: function () {
-            return NoneMode.Info;
+            return NoneMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NoneMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
         },
         enumerable: true,
         configurable: true
     });
     NoneMode.prototype.Dispose = function () {
         // Do nothing.
+        // Inform listeners.
+        this.zDisposed.Dispatch();
     };
     NoneMode.ID = 'none';
-    NoneMode.Description = 'None';
-    NoneMode.Info = new Mode_1.ModeInfo(NoneMode.ID, NoneMode.Description);
     return NoneMode;
 }());
 exports.NoneMode = NoneMode;
@@ -53522,10 +54681,10 @@ exports.NoneMode = NoneMode;
 
 /***/ }),
 
-/***/ "./src/ts/Modes/SetPreferredCameraPositionMode.js":
-/*!********************************************************!*\
-  !*** ./src/ts/Modes/SetPreferredCameraPositionMode.js ***!
-  \********************************************************/
+/***/ "./src/ts/Modes/PointMode.js":
+/*!***********************************!*\
+  !*** ./src/ts/Modes/PointMode.js ***!
+  \***********************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -53534,38 +54693,280 @@ exports.NoneMode = NoneMode;
 Object.defineProperty(exports, "__esModule", { value: true });
 var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
 var dat = wDatGui.default; // Workaround.
-var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
-var CameraTransformControl_1 = __webpack_require__(/*! ../Controls/CameraTransformControl */ "./src/ts/Controls/CameraTransformControl.js");
-var ModeFactory_1 = __webpack_require__(/*! ./ModeFactory */ "./src/ts/Modes/ModeFactory.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ControlPanel_1 = __webpack_require__(/*! ../Controls/ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
 var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
-var NoneMode_1 = __webpack_require__(/*! ./NoneMode */ "./src/ts/Modes/NoneMode.js");
-var SetPreferredCameraPositionMode = /** @class */ (function () {
-    function SetPreferredCameraPositionMode(controlPanel) {
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var PointMode = /** @class */ (function () {
+    function PointMode(controlPanel) {
         var _this = this;
-        this.OnApply = function () {
-            _this.Dispose();
-            var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(NoneMode_1.NoneMode.Info);
-            Application_1.Application.ModesControl.SetSelectedIndex(index);
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.DatGUI = null;
+        this.ResetClick = function () {
+            _this.Marker.position.set(0, 0, 0);
         };
-        this.CameraTransformControl = new CameraTransformControl_1.CameraTransformControl(controlPanel);
-        this.CameraTransformControl.ApplyButton.AddOnClickListener(this.OnApply);
+        this.OnLoad = function () {
+            var exists = LocalStorageManager_1.LocalStorageManager.PointLocationExists();
+            if (exists) {
+                var locationStandard = LocalStorageManager_1.LocalStorageManager.LoadPointLocation();
+                var locationPreferred = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(locationStandard, Application_1.Application.PreferredCoordinateSystem.Value);
+                _this.Marker.position.copy(locationPreferred);
+            }
+            else {
+                alert('No point location found.');
+            }
+        };
+        this.OnSave = function () {
+            var locationPreferred = _this.Marker.position.clone();
+            var locationStandard = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(locationPreferred, Application_1.Application.PreferredCoordinateSystem.Value);
+            LocalStorageManager_1.LocalStorageManager.SavePointLocation(locationStandard);
+        };
+        this.MarkerOn = true;
+        this.OnOffClick = function () {
+            _this.MarkerOn = !_this.MarkerOn;
+            if (_this.MarkerOn) {
+                _this.AddMarkerToScene();
+            }
+            else {
+                _this.RemoveMarkerFromScene();
+            }
+        };
+        var sphereGeometry = new three_1.SphereGeometry(1);
+        var sphereMaterial = new three_1.MeshBasicMaterial({ color: 0x2194ce });
+        this.Marker = new three_1.Mesh(sphereGeometry, sphereMaterial);
+        Application_1.Application.Theater.Scene.add(this.Marker);
+        this.AddDatGUI();
+        this.ControlHtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.ControlHtmlElement);
+        this.ControlHtmlElement.id = PointMode.ControlHtmlElementID;
+        this.ControlHtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        var title = document.createElement('p');
+        this.ControlHtmlElement.appendChild(title);
+        title.className = ControlPanel_1.ControlPanel.ControlTitleClassName;
+        title.innerHTML = 'Point';
+        this.OnOffButton = new ButtonControl_1.ButtonControl(this.ControlHtmlElement, 'On/Off');
+        this.OnOffButton.Click.Subscribe(this.OnOffClick);
+        this.LoadButton = new ButtonControl_1.ButtonControl(this.ControlHtmlElement, 'Load');
+        this.LoadButton.Click.Subscribe(this.OnLoad);
+        this.SaveButton = new ButtonControl_1.ButtonControl(this.ControlHtmlElement, 'Save');
+        this.SaveButton.Click.Subscribe(this.OnSave);
+        this.ResetButton = new ButtonControl_1.ButtonControl(this.ControlHtmlElement, 'Reset');
+        this.ResetButton.Click.Subscribe(this.ResetClick);
     }
-    Object.defineProperty(SetPreferredCameraPositionMode.prototype, "ModeInfo", {
+    Object.defineProperty(PointMode.prototype, "ID", {
         get: function () {
-            return SetPreferredCameraPositionMode.Info;
+            return PointMode.ID;
         },
         enumerable: true,
         configurable: true
     });
-    SetPreferredCameraPositionMode.prototype.Dispose = function () {
-        this.CameraTransformControl.HtmlElement.remove();
+    Object.defineProperty(PointMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointMode.prototype.AddDatGUI = function () {
+        this.DatGUI = new dat.GUI();
+        var position = this.DatGUI.addFolder('Position');
+        position.open();
+        var x = position.add(this.Marker.position, 'x');
+        x.listen();
+        var y = position.add(this.Marker.position, 'y');
+        y.listen();
+        var z = position.add(this.Marker.position, 'z');
+        z.listen();
     };
-    SetPreferredCameraPositionMode.ID = 'setPreferredCameraPosition';
-    SetPreferredCameraPositionMode.Description = 'Set Preferred Camera Position';
-    SetPreferredCameraPositionMode.Info = new Mode_1.ModeInfo(SetPreferredCameraPositionMode.ID, SetPreferredCameraPositionMode.Description);
-    return SetPreferredCameraPositionMode;
+    PointMode.prototype.RemoveDatGUI = function () {
+        if (this.DatGUI) {
+            this.DatGUI.destroy();
+        }
+    };
+    PointMode.prototype.AddMarkerToScene = function () {
+        Application_1.Application.Theater.Scene.add(this.Marker);
+    };
+    PointMode.prototype.RemoveMarkerFromScene = function () {
+        Application_1.Application.Theater.Scene.remove(this.Marker);
+    };
+    PointMode.prototype.Dispose = function () {
+        this.RemoveMarkerFromScene();
+        this.RemoveDatGUI();
+        this.ControlHtmlElement.remove();
+        this.zDisposed.Dispatch();
+    };
+    PointMode.ID = 'PointMode';
+    PointMode.ControlHtmlElementID = 'PointModeControl';
+    return PointMode;
 }());
-exports.SetPreferredCameraPositionMode = SetPreferredCameraPositionMode;
+exports.PointMode = PointMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SelfDisposingMode.js":
+/*!*******************************************!*\
+  !*** ./src/ts/Modes/SelfDisposingMode.js ***!
+  \*******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var ControlPanel_1 = __webpack_require__(/*! ../Controls/ControlPanel */ "./src/ts/Controls/ControlPanel.js");
+var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+/**
+ * A mode that tests the self disposal of modes.
+ */
+var SelfDisposingMode = /** @class */ (function () {
+    function SelfDisposingMode(controlPanel) {
+        var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.OnDisposeButtonClick = function () {
+            _this.Dispose();
+        };
+        this.HtmlElement = document.createElement('div');
+        controlPanel.HtmlElement.appendChild(this.HtmlElement);
+        this.HtmlElement.id = SelfDisposingMode.HtmlElementID;
+        this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
+        this.DisposeButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Dispose');
+        this.DisposeButton.Click.Subscribe(this.OnDisposeButtonClick);
+    }
+    Object.defineProperty(SelfDisposingMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SelfDisposingMode.prototype.Dispose = function () {
+        this.HtmlElement.remove();
+        this.zDisposed.Dispatch();
+    };
+    SelfDisposingMode.ID = 'selfDisposing';
+    SelfDisposingMode.HtmlElementID = 'SelfDisposing';
+    return SelfDisposingMode;
+}());
+exports.SelfDisposingMode = SelfDisposingMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SetLightsMode.js":
+/*!***************************************!*\
+  !*** ./src/ts/Modes/SetLightsMode.js ***!
+  \***************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var SetDirectionalLightControl_1 = __webpack_require__(/*! ../Controls/SetDirectionalLightControl */ "./src/ts/Controls/SetDirectionalLightControl.js");
+var SetPointLightControl_1 = __webpack_require__(/*! ../Controls/SetPointLightControl */ "./src/ts/Controls/SetPointLightControl.js");
+var SetAmbientLightControl_1 = __webpack_require__(/*! ../Controls/SetAmbientLightControl */ "./src/ts/Controls/SetAmbientLightControl.js");
+var SetLightLoadSaveControl_1 = __webpack_require__(/*! ../Controls/SetLightLoadSaveControl */ "./src/ts/Controls/SetLightLoadSaveControl.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var SetLightsMode = /** @class */ (function () {
+    function SetLightsMode(controlPanel) {
+        var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.LightingSpecificationChanged = function () {
+            Application_1.Application.Theater.Lighting.ApplySpecification(_this.LightingSpecification);
+        };
+        this.LoadSaveDisposed = function () {
+            _this.Dispose();
+        };
+        this.LightingSpecification = Application_1.Application.Theater.Lighting.Specification.Clone();
+        this.LightingSpecification.Changed.Subscribe(this.LightingSpecificationChanged);
+        this.SetAmbientLightControl = new SetAmbientLightControl_1.SetAmbientLightControl(controlPanel, this.LightingSpecification);
+        this.SetDirectionalLightControl = new SetDirectionalLightControl_1.SetDirectionalLightControl(controlPanel, this.LightingSpecification);
+        this.SetPointLightControl = new SetPointLightControl_1.SetPointLightControl(controlPanel, this.LightingSpecification);
+        this.SetLightLoadSaveControl = new SetLightLoadSaveControl_1.SetLightLoadSaveControl(controlPanel, this.LightingSpecification);
+        this.SetLightLoadSaveControl.Disposed.Subscribe(this.LoadSaveDisposed);
+    }
+    Object.defineProperty(SetLightsMode.prototype, "ID", {
+        get: function () {
+            return SetLightsMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SetLightsMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetLightsMode.prototype.Dispose = function () {
+        this.SetAmbientLightControl.Dispose();
+        this.SetDirectionalLightControl.Dispose();
+        this.SetPointLightControl.Dispose();
+        this.SetLightLoadSaveControl.Dispose();
+        Application_1.Application.Theater.Lighting.Specification.Copy(this.LightingSpecification);
+        Application_1.Application.Theater.Lighting.Specification.OnChange();
+        this.zDisposed.Dispatch();
+    };
+    SetLightsMode.ID = 'setLights';
+    return SetLightsMode;
+}());
+exports.SetLightsMode = SetLightsMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js":
+/*!*************************************************************!*\
+  !*** ./src/ts/Modes/SetPreferredCameraSpecificationMode.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var CameraTransformControl_1 = __webpack_require__(/*! ../Controls/CameraTransformControl */ "./src/ts/Controls/CameraTransformControl.js");
+var SetPreferredCameraSpecificationMode = /** @class */ (function () {
+    function SetPreferredCameraSpecificationMode(controlPanel) {
+        var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.OnCameraTransformControlFinished = function () {
+            _this.Dispose();
+        };
+        this.CameraTransformControl = new CameraTransformControl_1.CameraTransformControl(controlPanel);
+        this.CameraTransformControl.Disposed.Subscribe(this.OnCameraTransformControlFinished);
+    }
+    Object.defineProperty(SetPreferredCameraSpecificationMode.prototype, "ID", {
+        get: function () {
+            return SetPreferredCameraSpecificationMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SetPreferredCameraSpecificationMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SetPreferredCameraSpecificationMode.prototype.Dispose = function () {
+        this.zDisposed.Dispatch();
+    };
+    SetPreferredCameraSpecificationMode.ID = 'setPreferredCameraSpecification';
+    return SetPreferredCameraSpecificationMode;
+}());
+exports.SetPreferredCameraSpecificationMode = SetPreferredCameraSpecificationMode;
 
 
 /***/ }),
@@ -53583,41 +54984,29 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
 var dat = wDatGui.default; // Workaround.
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
 var AxesTransformControl_1 = __webpack_require__(/*! ../Controls/AxesTransformControl */ "./src/ts/Controls/AxesTransformControl.js");
-var Mode_1 = __webpack_require__(/*! ./Mode */ "./src/ts/Modes/Mode.js");
 var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
-var ModeFactory_1 = __webpack_require__(/*! ./ModeFactory */ "./src/ts/Modes/ModeFactory.js");
-var SetPreferredCameraPositionMode_1 = __webpack_require__(/*! ./SetPreferredCameraPositionMode */ "./src/ts/Modes/SetPreferredCameraPositionMode.js");
 var SetPreferredCoordinateSystemMode = /** @class */ (function () {
     function SetPreferredCoordinateSystemMode(controlPanel) {
-        var _this = this;
-        this.OnApply = function () {
-            // Tear down the axes transform control and move to the next mode, if the next mode has not been setup.
-            _this.Dispose();
-            var preferredCameraPositionPreviouslyDefined = LocalStorageManager_1.LocalStorageManager.PreferredCoordinateSystemExists();
-            if (preferredCameraPositionPreviouslyDefined) {
-                var loaded = LocalStorageManager_1.LocalStorageManager.LoadPreferredCameraPosition();
-                Application_1.Application.PreferredCameraPosition.copy(loaded);
-                // Apply the preferred coordinate system.
-                Application_1.Application.ApplyPreferredCoordinateSystem();
-            }
-            else {
-                // Start in the set preferred coordinate system mode.
-                var index = ModeFactory_1.ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode_1.SetPreferredCameraPositionMode.Info);
-                Application_1.Application.ModesControl.SetSelectedIndex(index);
-            }
-        };
+        this.zDisposed = new SignalEvent_1.SignalEvent();
         this.AxesHelper = Application_1.Application.Theater.Axes;
         this.Startup();
         this.AxesTransformControl = new AxesTransformControl_1.AxesTransformControl(controlPanel);
-        this.AxesTransformControl.ApplyButton.AddOnClickListener(this.OnApply);
         this.DatGUI = new dat.GUI();
         this.ConfigureDatGui();
     }
-    Object.defineProperty(SetPreferredCoordinateSystemMode.prototype, "ModeInfo", {
+    Object.defineProperty(SetPreferredCoordinateSystemMode.prototype, "ID", {
         get: function () {
-            return SetPreferredCoordinateSystemMode.Info;
+            return SetPreferredCoordinateSystemMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SetPreferredCoordinateSystemMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
         },
         enumerable: true,
         configurable: true
@@ -53643,6 +55032,7 @@ var SetPreferredCoordinateSystemMode = /** @class */ (function () {
     SetPreferredCoordinateSystemMode.prototype.Dispose = function () {
         this.AxesTransformControl.HtmlElement.remove();
         this.DatGUI.destroy();
+        this.zDisposed.Dispatch();
     };
     SetPreferredCoordinateSystemMode.prototype.Startup = function () {
         // Determine a range for the dat.GUI controls that is helpful (a box centered on the miniature's bounding box's center, sized at twice the with in each dimension.      
@@ -53665,8 +55055,6 @@ var SetPreferredCoordinateSystemMode = /** @class */ (function () {
         }
     };
     SetPreferredCoordinateSystemMode.ID = 'setPreferredCoordinateSystem';
-    SetPreferredCoordinateSystemMode.Description = 'Set Preferred Coordinate System';
-    SetPreferredCoordinateSystemMode.Info = new Mode_1.ModeInfo(SetPreferredCoordinateSystemMode.ID, SetPreferredCoordinateSystemMode.Description);
     return SetPreferredCoordinateSystemMode;
 }());
 exports.SetPreferredCoordinateSystemMode = SetPreferredCoordinateSystemMode;
@@ -53686,6 +55074,7 @@ exports.SetPreferredCoordinateSystemMode = SetPreferredCoordinateSystemMode;
 Object.defineProperty(exports, "__esModule", { value: true });
 var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var Constants_1 = __webpack_require__(/*! ./Constants */ "./src/ts/Constants.js");
+var Lighting_1 = __webpack_require__(/*! ./Lighting */ "./src/ts/Lighting.js");
 var Theater = /** @class */ (function () {
     function Theater() {
         this.RenderActions = [];
@@ -53697,6 +55086,7 @@ var Theater = /** @class */ (function () {
         // this.Camera.position.set(0, 0, Constants.ModestDistance);
         this.Camera.lookAt(0, 0, 0);
         this.Scene.add(this.Camera);
+        this.Lighting = new Lighting_1.Lighting(this.Scene);
         this.Renderer = new THREE.WebGLRenderer();
         this.Renderer.setClearColor(0xffffff);
         this.Renderer.setSize(window.innerWidth, window.innerHeight);
@@ -53729,70 +55119,35 @@ exports.Theater = Theater;
 
 /***/ }),
 
-/***/ "./src/ts/index.js":
-/*!*************************!*\
-  !*** ./src/ts/index.js ***!
-  \*************************/
+/***/ "./src/ts/Tour/Tour.js":
+/*!*****************************!*\
+  !*** ./src/ts/Tour/Tour.js ***!
+  \*****************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var DATGUI_Workaround = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
-var dat = DATGUI_Workaround.default;
-var Application_1 = __webpack_require__(/*! ./Application */ "./src/ts/Application.js");
-var LoadingBlocker_1 = __webpack_require__(/*! ./LoadingBlocker */ "./src/ts/LoadingBlocker.js");
-var Startup = /** @class */ (function () {
-    function Startup() {
+var Tour = /** @class */ (function () {
+    function Tour() {
+        this.Steps = [];
+        this.Index = 0;
     }
-    Startup.main = function () {
-        // ModelInitialization.main();
-        // DynamicHtml.main();
-        // Startup.testLoadingBlocker();
-        // Startup.testDatGui();
-        Application_1.Application.Main();
+    Tour.prototype.AddStep = function (step) {
+        this.Steps.push(step);
     };
-    Startup.testDatGui = function () {
-        var outputTextElement = document.createElement('h1');
-        document.body.appendChild(outputTextElement);
-        var controlValues = new Object();
-        controlValues.x = 1;
-        var datGui = new dat.GUI();
-        var valuesFolder = datGui.addFolder('Values');
-        valuesFolder.open();
-        var button = document.createElement('button');
-        button.innerHTML = 'Click to remove controls';
-        button.onclick = function () {
-            datGui.destroy();
-        };
-        document.body.appendChild(button);
-        var maxDistance = 100;
-        var xControl = valuesFolder.add(controlValues, 'x', -maxDistance, maxDistance);
-        function render() {
-            outputTextElement.innerHTML = controlValues.x;
-            requestAnimationFrame(render);
+    Tour.prototype.NextStep = function () {
+        if (this.Index < this.Steps.length) {
+            var action = this.Steps[this.Index];
+            action();
+            this.Index++;
         }
-        render();
+        // Else, do nothing.
     };
-    Startup.testLoadingBlocker = function () {
-        var loadingBlocker = new LoadingBlocker_1.LoadingBlocker();
-        // Load 10% every 1000 milliseconds.
-        var nSteps = 10;
-        var iStep = 0;
-        var interval = setInterval(function () {
-            iStep++;
-            loadingBlocker.message = 'Loading ...' + (iStep / nSteps) * 100 + '%';
-            if (iStep === nSteps) {
-                clearInterval(interval);
-                loadingBlocker.remove();
-            }
-        }, 1000);
-    };
-    return Startup;
+    return Tour;
 }());
-Startup.main();
-// window.onload = Application.Main;
+exports.Tour = Tour;
 
 
 /***/ })

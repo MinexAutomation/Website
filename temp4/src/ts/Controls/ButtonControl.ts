@@ -1,3 +1,6 @@
+import { IEvent, Event } from "../Common/Events/Event";
+
+
 export class ButtonControl {
     public static readonly ButtonCssClassName = 'ButtonControl';
 
@@ -68,7 +71,10 @@ export class ButtonControl {
     public Disable(): void {
         this.Enabled = false;
     }
-    public OnClickListeners: Array<(ev: MouseEvent) => any> = [];
+    private zClick = new Event<ButtonControl, MouseEvent>();
+    public get Click() : IEvent<ButtonControl, MouseEvent> {
+        return this.zClick.AsEvent();
+    }
 
 
     public constructor(parent: HTMLElement, text?: string, id?: string) {
@@ -84,17 +90,6 @@ export class ButtonControl {
         parent.appendChild(this.HtmlElement);
 
         this.Enable();
-    }
-
-    public AddOnClickListener(listener: (ev: MouseEvent) => any) {
-        this.OnClickListeners.push(listener);
-    }
-
-    public RemoveOnClickListener(listener: (ev: MouseEvent) => any) {
-        let index = this.OnClickListeners.indexOf(listener);
-        if(-1 !== index) {
-            this.OnClickListeners.splice(index, 1);
-        }
     }
 
     private AddListeners(): void {
@@ -123,10 +118,7 @@ export class ButtonControl {
             this.zHtmlElement.style.backgroundColor = 'inherit';
         }, 1000);
 
-        this.OnClickListeners.forEach(listener => {
-            let boundListener = listener.bind(this.zHtmlElement);
-            boundListener(ev);
-        });
+        this.zClick.Dispatch(this, ev);
     }
 }
 ButtonControl.StaticConstructor();

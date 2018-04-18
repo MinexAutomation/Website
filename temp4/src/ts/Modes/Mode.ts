@@ -1,3 +1,6 @@
+import { ISignalEvent } from "../Common/Events/SignalEvent";
+
+
 export class ModeInfo {
     private zID: string;
     public get ID(): string {
@@ -17,8 +20,9 @@ export class ModeInfo {
 
 
 export interface IMode {
-    readonly ModeInfo: ModeInfo; // Usually returns a static instance.
+    readonly ID: string; // Usually returns a static instance.
 
 
     Dispose(): void; // Removes all controls associated with the mode from the control panel.
+    Disposed: ISignalEvent;
 }

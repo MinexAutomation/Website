@@ -1,23 +1,23 @@
 import * as THREE from "three";
-
-import { AxesTransformControl } from "./Controls/AxesTransformControl";
-import { Constants } from "./Constants";
-import { ControlPanel } from "./Controls/ControlPanel";
-import { OffsetAndScaleControls } from "./Controls/OffsetAndScaleControls";
-import { LocalStorageManager } from "./LocalStorageManager";
-import { Miniature } from "./Miniature";
 import { Theater } from "./Theater";
-import { ScratchControl } from "./Controls/ScratchControl";
 import { TrackballController } from "./Controllers/TrackballController";
-import "three/TransformControls";
-import { WebGLDetectorControl } from "./Controls/WebGLDetectorControl";
+import { Miniature } from "./Miniature";
+import { ControlPanel } from "./Controls/ControlPanel";
 import { ModesControl } from "./Controls/ModesControl";
 import { CoordinateSystemConversion } from "./CoordinateSystemConversion";
+import { NotifyingValueProperty } from "./Common/NotifyingValueProperty";
+import { CameraSpecification } from "./CameraSpecification";
+import { Constants } from "./Constants";
+import { ScratchControl } from "./Controls/ScratchControl";
 import { LoadingBlocker } from "./LoadingBlocker";
-import { ModeFactory } from "./Modes/ModeFactory";
+import { Tour } from "./Tour/Tour";
+import { LocalStorageManager } from "./LocalStorageManager";
 import { SetPreferredCoordinateSystemMode } from "./Modes/SetPreferredCoordinateSystemMode";
-import { Vector3 } from "three";
-import { SetPreferredCameraPositionMode } from "./Modes/SetPreferredCameraPositionMode";
+import { SetPreferredCameraSpecificationMode } from "./Modes/SetPreferredCameraSpecificationMode";
+import { SetLightsMode } from "./Modes/SetLightsMode";
+import { Modal } from "./Modal";
+import { PointMode } from "./Modes/PointMode";
+import { LightingSpecification } from "./LightingSpecification";
 
 
 export class Application {
@@ -31,8 +31,8 @@ export class Application {
      * 
      * The reference is constant, change by modifying the referenced object.
      */
-    public static readonly PreferredCoordinateSystem = new CoordinateSystemConversion();
-    public static readonly PreferredCameraPosition = new CoordinateSystemConversion();
+    public static readonly PreferredCoordinateSystem = new NotifyingValueProperty<CoordinateSystemConversion>(new CoordinateSystemConversion());
+    public static readonly PreferredCameraSpecification = new NotifyingValueProperty<CameraSpecification>(new CameraSpecification());
 
 
     public static Main(): void {
@@ -46,26 +46,29 @@ export class Application {
         Application.Miniature = new Miniature(Application.Theater, Constants.ModelsPath, Constants.ObjFileName, Constants.MtlFileName,
             Application.MiniatureLoadingProgressHandler, Application.MiniatureLoadingErrorHandler, Application.MiniatureLoadingFinishedHandler);
 
+
         Application.ControlPanel = new ControlPanel();
         Application.ModesControl = new ModesControl(Application.ControlPanel);
 
         let scratchControl = new ScratchControl(Application.ControlPanel);
-        scratchControl.Button.AddOnClickListener(Application.Scratch);
+        scratchControl.Button.Click.Subscribe(Application.Scratch);
 
         Application.SetWindowEventHandlers();
     }
 
-    public static ApplyPreferredCameraPosition() {
-        Application.Theater.Camera.position.copy(Application.PreferredCameraPosition.Translation);
-        Application.Theater.Camera.rotation.setFromVector3(Application.PreferredCameraPosition.Rotation);
+    public static ApplyPreferredCameraSpecification() {
+        Application.Theater.Camera.position.copy(Application.PreferredCameraSpecification.Value.Position);
+        Application.Theater.Camera.rotation.setFromVector3(Application.PreferredCameraSpecification.Value.Rotation);
+        // Application.TrackballController.Controls.target.copy(Application.PreferredCameraSpecification.Value.Target);
+        Application.Theater.Camera.up.copy(Application.PreferredCameraSpecification.Value.Up);
     }
 
     public static ApplyPreferredCoordinateSystem() {
         Application.Theater.Axes.position.set(0, 0, 0);
         Application.Theater.Axes.rotation.set(0, 0, 0);
 
-        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Translation);
-        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Rotation);
+        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
+        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
     }
 
     private static MiniatureLoadingProgressHandler = (ev: ProgressEvent) => {
@@ -79,34 +82,127 @@ export class Application {
     private static MiniatureLoadingFinishedHandler() {
         LoadingBlocker.Hide();
 
-        let preferredCoordinateSystemPreviouslyDefined = LocalStorageManager.PreferredCoordinateSystemExists();
-        if (preferredCoordinateSystemPreviouslyDefined) {
-            let loaded = LocalStorageManager.LoadPreferredCoordinateSystem();
-            Application.PreferredCoordinateSystem.Copy(loaded);
+        Application.SetupTour();
+    }
 
-            // Apply the preferred coordinate system.
+    private static SetupTour() {
+        let coordinateSystemPreviouslySet = LocalStorageManager.PreferredCoordinateSystemExists();
+        let cameraSpecificationPreviouslySet = LocalStorageManager.PreferredCameraSpecificationExists();
+        let lightingSpecificationPreviouslySet = LocalStorageManager.LightingSpecificationExists();
+
+        let tour = new Tour();
+
+        Application.AddTourInstructions(tour);
+        
+        if (coordinateSystemPreviouslySet) {
+            let coordinateSystem = LocalStorageManager.LoadPreferredCoordinateSystem();
+            Application.PreferredCoordinateSystem.Value = coordinateSystem;
             Application.ApplyPreferredCoordinateSystem();
         } else {
-            // Start in the set preferred coordinate system mode.
-            let index = ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCoordinateSystemMode.Info);
-            Application.ModesControl.SetSelectedIndex(index);
+            tour.AddStep(() => {
+                Application.ModesControl.SetCurrentModeByID(SetPreferredCoordinateSystemMode.ID);
 
-            return;
+                Application.PreferredCoordinateSystem.ValueChanged.SubscribeOnce(() => {
+                    tour.NextStep();
+                });
+            });
         }
-
-        let preferredCameraPositionPreviouslyDefined = LocalStorageManager.PreferredCameraPositionExists();
-        if(preferredCameraPositionPreviouslyDefined) {
-            let loaded = LocalStorageManager.LoadPreferredCameraPosition();
-            Application.PreferredCameraPosition.Copy(loaded);
-
-            Application.ApplyPreferredCameraPosition();
+        
+        if (cameraSpecificationPreviouslySet) {
+            let cameraSpecification = LocalStorageManager.LoadPreferredCameraSpecification();
+            Application.PreferredCameraSpecification.Value = cameraSpecification;
+            Application.ApplyPreferredCameraSpecification();
         } else {
-            // Start in the set preferred camera position mode.
-            let index = ModeFactory.GetIndexOfModeByModeInfo(SetPreferredCameraPositionMode.Info);
-            Application.ModesControl.SetSelectedIndex(index);
+            tour.AddStep(() => {
+                Application.ModesControl.SetCurrentModeByID(SetPreferredCameraSpecificationMode.ID);
 
-            return;
+                Application.PreferredCameraSpecification.ValueChanged.SubscribeOnce(() => {
+                    tour.NextStep();
+                });
+            });
         }
+
+        if (lightingSpecificationPreviouslySet) {
+            let lightingSpecification = LocalStorageManager.LoadLightingSpecification();
+            lightingSpecification.AdjustToPreferredCoordinateSystem(Application.PreferredCoordinateSystem.Value);
+
+            Application.Theater.Lighting.Specification.Copy(lightingSpecification);
+            Application.Theater.Lighting.Specification.OnChange();
+        } else {
+            // TEMP: Start in the set lights mode.
+            tour.AddStep(() => {
+                Application.ModesControl.SetCurrentModeByID(SetLightsMode.ID);
+
+                Application.Theater.Lighting.Specification.Changed.SubscribeOnce(() => {
+                    tour.NextStep();
+                });
+            });
+        }
+
+        // // TEMP: Start in the point mode.
+        // tour.AddStep(() => {
+        //     Application.ModesControl.SetCurrentModeByID(PointMode.ID);
+
+        //     // No next step.
+        // });
+
+        Application.AddTourFinished(tour);
+
+        let needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
+        if(needsTour) {
+            // Start the tour!
+            tour.NextStep();
+        }
+    }
+
+    private static AddTourInstructions(tour: Tour) {
+        // Show the tour instructions.
+        tour.AddStep(() => {
+            Modal.Initialize();
+            Modal.HeaderMessage = 'Welcome! Let\'s have a tour.';
+
+            let body = Modal.GetBodyHtmlElement();
+
+            let bodyIntroduction = document.createElement('p');
+            body.appendChild(bodyIntroduction);
+            bodyIntroduction.innerHTML = 'We will walkthrough setting up these settings:';
+
+            let ul = document.createElement('ul');
+            body.appendChild(ul);
+
+            let coordinates = document.createElement('li');
+            ul.appendChild(coordinates);
+            coordinates.innerHTML = 'Coordinate System';
+
+            let camera = document.createElement('li');
+            ul.appendChild(camera);
+            camera.innerHTML = 'Camera View';
+
+            let lighting = document.createElement('li');
+            ul.appendChild(lighting);
+            lighting.innerHTML = 'Lights';
+
+            Modal.Closed.SubscribeOnce(() => {
+                tour.NextStep();
+            });
+
+            Modal.Show();
+        });
+    }
+
+    private static AddTourFinished(tour: Tour) {
+        tour.AddStep(() => {
+            Modal.Initialize();
+            Modal.HeaderMessage = 'Done!';
+
+            Modal.BodyMessage = 'Tour finished.';
+
+            Modal.Closed.SubscribeOnce(() => {
+                tour.NextStep();
+            });
+
+            Modal.Show();
+        });
     }
 
     private static Scratch(ev) {
@@ -139,7 +235,24 @@ export class Application {
         //     Application.Miniature.Object.rotation.setFromVector3(r);
         // })
 
-        console.log(Application.Theater.Camera.position);
+        // console.log(Application.Theater.Camera.position);
+
+        // let dbg = Application.Theater.Camera;
+
+        // let nullValue: number = null;
+        // if(nullValue) {
+        //     console.log('nullValue true');
+        // } else {
+        //     console.log('nullValue false');
+        // }
+        // let undefValue: number = undefined;
+        // if(undefValue) {
+        //     console.log('undefValue true');
+        // } else {
+        //     console.log('undefValue false');
+        // }
+
+        let dbg = Application.Theater.Lighting.DirectionalLight;
     }
 
     private static SubMain() {
@@ -150,7 +263,7 @@ export class Application {
 
         Application.ControlPanel = new ControlPanel();
         let scratchControl = new ScratchControl(Application.ControlPanel);
-        scratchControl.Button.AddOnClickListener(Application.Scratch);
+        scratchControl.Button.Click.Subscribe(Application.Scratch);
 
         Application.SetWindowEventHandlers();
     }
@@ -165,3 +278,4 @@ export class Application {
         Application.Theater.Camera.updateProjectionMatrix();
     }
 }
+window.onload = Application.Main;

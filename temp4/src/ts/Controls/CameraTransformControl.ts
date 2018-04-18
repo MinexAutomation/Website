@@ -3,15 +3,21 @@ import { ControlPanel } from "./ControlPanel";
 import { Modal } from "../Modal";
 import { Application } from "../Application";
 import { LocalStorageManager } from "../LocalStorageManager";
+import { ISignalEvent, SignalEvent } from "../Common/Events/SignalEvent";
+import { Vector3 } from "three";
 
 
 export class CameraTransformControl {
     public static readonly HtmlElementId = 'CameraTransformControl';
 
 
-    public readonly HtmlElement: HTMLDivElement;
+    private readonly HtmlElement: HTMLDivElement;
     private readonly InstructionsButton: ButtonControl;
-    public readonly ApplyButton: ButtonControl;
+    private readonly ApplyButton: ButtonControl;
+    private readonly zDisposed: SignalEvent = new SignalEvent();
+    public get Disposed(): ISignalEvent {
+        return this.zDisposed.AsEvent();
+    }
 
 
     public constructor(controlPanel: ControlPanel) {
@@ -21,19 +27,36 @@ export class CameraTransformControl {
         this.HtmlElement.className = ControlPanel.ControlClassName;
 
         this.InstructionsButton = new ButtonControl(this.HtmlElement, 'Show Instructions');
-        this.InstructionsButton.AddOnClickListener(() => { this.ShowInstructions(); });
+        this.InstructionsButton.Click.Subscribe(() => { this.ShowInstructions(); });
 
         this.ApplyButton = new ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.AddOnClickListener(this.OnApply);
+        this.ApplyButton.Click.Subscribe(this.OnApply);
 
         this.ShowInstructions();
     }
 
-    private OnApply = () => {
-        Application.PreferredCameraPosition.Translation.copy(Application.Theater.Camera.position);
-        Application.PreferredCameraPosition.Rotation.copy(Application.Theater.Camera.rotation.toVector3());
+    public Dispose() {
+        this.HtmlElement.remove();
+        this.zDisposed.Dispatch();
+    }
 
-        LocalStorageManager.SavePreferredCameraPosition(Application.PreferredCameraPosition);
+    private OnApply = () => {
+
+        Application.PreferredCameraSpecification.Value.Position.copy(Application.Theater.Camera.position);
+        Application.PreferredCameraSpecification.Value.Rotation.copy(Application.Theater.Camera.rotation.toVector3());
+        Application.PreferredCameraSpecification.Value.Up.copy(Application.Theater.Camera.up);
+
+        let cameraDirection = new Vector3();
+        Application.Theater.Camera.getWorldDirection(cameraDirection);
+        let cameraPosition = Application.Theater.Camera.position.clone();
+        let target = new Vector3();
+        target.copy(Application.Theater.Camera.position);
+        target.add(cameraDirection);
+        Application.PreferredCameraSpecification.Value.Target.copy(target);
+
+        LocalStorageManager.SavePreferredCameraSpecification(Application.PreferredCameraSpecification.Value);
+
+        this.Dispose();
     }
 
     private ShowInstructions(): void {
@@ -50,8 +73,6 @@ export class CameraTransformControl {
         let p2 = document.createElement('p');
         bodyElement.appendChild(p2);
         p2.innerHTML = 'When ready, click <b>Apply</b>.';
-
-        Modal.FooterMessage = 'Click outside to close';
 
         Modal.Show();
     }

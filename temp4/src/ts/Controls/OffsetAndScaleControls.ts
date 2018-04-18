@@ -29,7 +29,7 @@ export class OffsetAndScaleControls {
             scale: this.GeomScale,
         };
 
-        let datGui: wDatGui.GUI = new dat.GUI();
+        let datGui: wDatGui.GUI = new dat.GUI();  // No intellisense support here, but does work.
 
         let geometryFolder = datGui.addFolder('Geometry');
         geometryFolder.open();

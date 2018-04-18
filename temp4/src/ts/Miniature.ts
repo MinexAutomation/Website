@@ -96,20 +96,4 @@ export class Miniature {
 
         // this.PositionObject();
     }
-
-    // Position the loaded object in the center of the screen.
-    private PositionObject() {
-        this.Object.scale.copy(this.Scale);
-        this.Object.position.copy(this.Offset);
-    }
-
-    // The miniature needs to be scaled to be visible and positioned such that it's center is at the origin. Compute these values.
-    private ComputeScaleAndOffset() {
-        let scaleValue = Constants.ModestDistance / this.Radius;
-        this.Scale.set(scaleValue, scaleValue, scaleValue);
-
-        let scaledCenter = this.Center.clone().multiplyScalar(scaleValue);
-        let positionForCenterAtOrigin = scaledCenter.clone().negate();
-        this.Offset.copy(positionForCenterAtOrigin);
-    }
 }

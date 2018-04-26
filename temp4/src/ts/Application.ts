@@ -18,6 +18,15 @@ import { SetLightsMode } from "./Modes/SetLightsMode";
 import { Modal } from "./Modal";
 import { PointMode } from "./Modes/PointMode";
 import { LightingSpecification } from "./LightingSpecification";
+import { PointAnnotationMode } from "./Modes/PointAnnotationMode";
+import { Color } from "three";
+import { CategoriesManager } from "./Annotations/CategoriesManager";
+import { CategoryManagementMode } from "./Modes/CategoryManagementMode";
+import { InformationBox } from "./Common/Boxes/InformationBox";
+import { MessageBox } from "./Common/Boxes/MessageBox";
+import { EditorBox, EditorBoxResult } from "./Common/Boxes/EditorBox";
+import { IdentifiedManager } from "./Common/IdentifiedManager";
+import { PointAnnotation } from "./Annotations/PointAnnotation";
 
 
 export class Application {
@@ -33,6 +42,8 @@ export class Application {
      */
     public static readonly PreferredCoordinateSystem = new NotifyingValueProperty<CoordinateSystemConversion>(new CoordinateSystemConversion());
     public static readonly PreferredCameraSpecification = new NotifyingValueProperty<CameraSpecification>(new CameraSpecification());
+    public static readonly CategoryManager = new CategoriesManager();
+    public static readonly PointAnnotationsManager = new IdentifiedManager<PointAnnotation>();
 
 
     public static Main(): void {
@@ -86,14 +97,9 @@ export class Application {
     }
 
     private static SetupTour() {
-        let coordinateSystemPreviouslySet = LocalStorageManager.PreferredCoordinateSystemExists();
-        let cameraSpecificationPreviouslySet = LocalStorageManager.PreferredCameraSpecificationExists();
-        let lightingSpecificationPreviouslySet = LocalStorageManager.LightingSpecificationExists();
-
         let tour = new Tour();
-
-        Application.AddTourInstructions(tour);
         
+        let coordinateSystemPreviouslySet = LocalStorageManager.PreferredCoordinateSystemExists();
         if (coordinateSystemPreviouslySet) {
             let coordinateSystem = LocalStorageManager.LoadPreferredCoordinateSystem();
             Application.PreferredCoordinateSystem.Value = coordinateSystem;
@@ -101,13 +107,14 @@ export class Application {
         } else {
             tour.AddStep(() => {
                 Application.ModesControl.SetCurrentModeByID(SetPreferredCoordinateSystemMode.ID);
-
+                
                 Application.PreferredCoordinateSystem.ValueChanged.SubscribeOnce(() => {
                     tour.NextStep();
                 });
             });
         }
         
+        let cameraSpecificationPreviouslySet = LocalStorageManager.PreferredCameraSpecificationExists();
         if (cameraSpecificationPreviouslySet) {
             let cameraSpecification = LocalStorageManager.LoadPreferredCameraSpecification();
             Application.PreferredCameraSpecification.Value = cameraSpecification;
@@ -115,13 +122,14 @@ export class Application {
         } else {
             tour.AddStep(() => {
                 Application.ModesControl.SetCurrentModeByID(SetPreferredCameraSpecificationMode.ID);
-
+                
                 Application.PreferredCameraSpecification.ValueChanged.SubscribeOnce(() => {
                     tour.NextStep();
                 });
             });
         }
-
+        
+        let lightingSpecificationPreviouslySet = LocalStorageManager.LightingSpecificationExists();
         if (lightingSpecificationPreviouslySet) {
             let lightingSpecification = LocalStorageManager.LoadLightingSpecification();
             lightingSpecification.AdjustToPreferredCoordinateSystem(Application.PreferredCoordinateSystem.Value);
@@ -129,7 +137,6 @@ export class Application {
             Application.Theater.Lighting.Specification.Copy(lightingSpecification);
             Application.Theater.Lighting.Specification.OnChange();
         } else {
-            // TEMP: Start in the set lights mode.
             tour.AddStep(() => {
                 Application.ModesControl.SetCurrentModeByID(SetLightsMode.ID);
 
@@ -139,29 +146,50 @@ export class Application {
             });
         }
 
-        // // TEMP: Start in the point mode.
-        // tour.AddStep(() => {
-        //     Application.ModesControl.SetCurrentModeByID(PointMode.ID);
+        let categoriesPreviouslySet = LocalStorageManager.CategoriesExist();
+        if (categoriesPreviouslySet) {
+            let categories = LocalStorageManager.LoadCategories();
+            Application.CategoryManager.Copy(categories);
+        } else {
+            tour.AddStep(() => {
+                Application.ModesControl.SetCurrentModeByID(CategoryManagementMode.ID);
 
-        //     // No next step.
-        // });
-
-        Application.AddTourFinished(tour);
+                Application.CategoryManager.Changed.SubscribeOnce(() => {
+                    tour.NextStep();
+                });
+            });
+        }
 
         let needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
         if(needsTour) {
-            // Start the tour!
-            tour.NextStep();
+            let instructions = Application.GetTourInstructions(tour);
+            tour.InsertStep(instructions, 0);
+
+            let finished = Application.GetTourFinished(tour);
+            tour.AddStep(finished);
         }
+
+        // TEMP: Start in a specific mode.
+        tour.AddStep(() => {
+            Application.ModesControl.SetCurrentModeByID(PointAnnotationMode.ID);
+
+            // No next step.
+        });
+
+        // Start the tour!
+        tour.NextStep();
     }
 
-    private static AddTourInstructions(tour: Tour) {
+    private static GetTourInstructions(tour: Tour): () => void {
         // Show the tour instructions.
-        tour.AddStep(() => {
-            Modal.Initialize();
-            Modal.HeaderMessage = 'Welcome! Let\'s have a tour.';
+        let output = () => {
+            // Move on in the tour when closed.
+            InformationBox.Closed.SubscribeOnce(() => {
+                tour.NextStep();
+            })
 
-            let body = Modal.GetBodyHtmlElement();
+            // Use a structured custom body.
+            let body = document.createElement('div');
 
             let bodyIntroduction = document.createElement('p');
             body.appendChild(bodyIntroduction);
@@ -182,27 +210,24 @@ export class Application {
             ul.appendChild(lighting);
             lighting.innerHTML = 'Lights';
 
-            Modal.Closed.SubscribeOnce(() => {
-                tour.NextStep();
-            });
+            // Show.
+            InformationBox.ShowHtml(body, 'Welcome! Let\'s have a tour.');
+        };
 
-            Modal.Show();
-        });
+        return output;
     }
 
-    private static AddTourFinished(tour: Tour) {
-        tour.AddStep(() => {
-            Modal.Initialize();
-            Modal.HeaderMessage = 'Done!';
-
-            Modal.BodyMessage = 'Tour finished.';
-
-            Modal.Closed.SubscribeOnce(() => {
+    private static GetTourFinished(tour: Tour): () => void {
+        let output = () => {
+            // Move on in the tour when closed.
+            InformationBox.Closed.SubscribeOnce(() => {
                 tour.NextStep();
-            });
+            })
 
-            Modal.Show();
-        });
+            InformationBox.Show('Tour finished.', 'Done!');
+        };
+
+        return output;
     }
 
     private static Scratch(ev) {
@@ -252,7 +277,35 @@ export class Application {
         //     console.log('undefValue false');
         // }
 
-        let dbg = Application.Theater.Lighting.DirectionalLight;
+        // let dbg = Application.Theater.Lighting.DirectionalLight;
+
+        // let a: number[] = [];
+        // a.push(1);
+        // a.push(1);
+        // a.push(1);
+
+        // let json = JSON.stringify(a);
+
+        InformationBox.Show('Hello!', 'A Hello');
+
+        // MessageBox.Show('Hello!', 'A Hello.', 'AbortRetryIgnore');
+
+        // let editor = new EditorBox<string>('', 'A String');
+        // editor.Closed.Subscribe((result: EditorBoxResult<string>) => {
+        //     console.log(`${result.Action}: ${result.Instance}`);
+        // });
+        // let body = editor.BodyHtmlElement;
+        // let valueLabel = document.createElement('label');
+        // body.appendChild(valueLabel);
+        // valueLabel.innerHTML = 'Value:';
+        // let valueText = document.createElement('input');
+        // valueText.type = 'text';
+        // body.appendChild(valueText);
+        // valueText.placeholder = 'value...';
+        // valueText.onchange = () => {
+        //     editor.Instance = valueText.value;
+        // };
+        // editor.Show();
     }
 
     private static SubMain() {

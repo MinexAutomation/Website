@@ -10,6 +10,8 @@ import { SetPreferredCameraSpecificationMode } from "../Modes/SetPreferredCamera
 import { SelfDisposingMode } from "../Modes/SelfDisposingMode";
 import { SetLightsMode } from "../Modes/SetLightsMode";
 import { PointMode } from "../Modes/PointMode";
+import { PointAnnotationMode } from "../Modes/PointAnnotationMode";
+import { CategoryManagementMode } from "../Modes/CategoryManagementMode";
 
 
 // Allows choosing which mode will put its controls to the control panel.
@@ -26,6 +28,8 @@ export class ModesControl {
         new ModeInfo(SelfDisposingMode.ID, 'Self Disposing'),
         new ModeInfo(SetLightsMode.ID, 'Set Lights'),
         new ModeInfo(PointMode.ID, 'Point Mode'),
+        new ModeInfo(PointAnnotationMode.ID, 'Point Annotation'),
+        new ModeInfo(CategoryManagementMode.ID, 'Categories'),
     ];
 
 

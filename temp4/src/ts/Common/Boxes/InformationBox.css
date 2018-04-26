@@ -1,0 +1,67 @@
+#InfoBox-Root {
+    display: block;
+    position: fixed;
+    z-index: 1;
+
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+
+    overflow: auto;
+
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#InfoBox-Content {
+    background-color: #f4f4f4;
+    margin: 20% auto;
+    width: 70%;
+    box-shadow: 0 5px 8px 0 rgba(0, 0, 0, 0.2), 0 7px 20px 0 rgba(0, 0, 0, 0.17);
+
+    animation-name: modalOpen;
+    animation-duration: 1s;
+}
+
+#InfoBox-Header {
+    background: coral;
+    padding: 15px;
+    color: white;
+}
+
+#InfoBox-Header h2 {
+    margin: 0;
+}
+
+#InfoBox-Body {
+    padding: 10px 20px;
+}
+
+#InfoBox-Footer {
+    background: coral;
+    padding: 10px;
+    color: white;
+    text-align: center;
+    overflow: auto;
+}
+
+#InfoBox-CloseButton {
+    color: white;
+    float: right;
+    font-size: 30px;
+}
+
+#InfoBox-CloseButton:hover, #InfoBox-CloseButton:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+@keyframes modalOpen {
+    from{ opacity: 0}
+    to {opacity: 1}
+}
+
+#InfoBox-OkButton {
+    float: right;
+}

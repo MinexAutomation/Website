@@ -5,6 +5,9 @@ import { CameraSpecification } from "./CameraSpecification";
 import { Application } from "./Application";
 import { StorageVector3 } from "./Classes/StorageVector3";
 import { LightingSpecification } from "./LightingSpecification";
+import { CategoriesManager } from "./Annotations/CategoriesManager";
+import { IdentifiedManager } from "./Common/IdentifiedManager";
+import { PointAnnotation } from "./Annotations/PointAnnotation";
 
 
 export class LocalStorageManager {
@@ -12,7 +15,68 @@ export class LocalStorageManager {
     public static readonly PreferredCameraSpecificationName = 'PreferredCameraSpecification';
     public static readonly PointLocationName = 'PointLocation';
     public static readonly LightingSpecificationName = 'LightingSpecification';
+    public static readonly CategoriesName = 'Categories';
+    public static readonly PointAnnotationsName = 'Point Annotations';
 
+
+    public static PointAnnotationsExist(): boolean {
+        let output = LocalStorageManager.PointAnnotationsName in localStorage;
+        return output;
+    }
+
+    public static LoadPointAnnotations(): IdentifiedManager<PointAnnotation> {
+        let exists = LocalStorageManager.PointAnnotationsExist();
+        if(!exists) {
+            return null;
+        }
+
+        let json = localStorage.getItem(LocalStorageManager.PointAnnotationsName);
+        let objs = JSON.parse(json);
+
+        let output = new IdentifiedManager<PointAnnotation>();
+        output.FromObject(objs, (obj) => {
+            let output = new PointAnnotation();
+            output.FromObject(obj);
+            return output;
+        });
+
+        return output;
+    }
+
+    public static SavePointAnnotations(pointAnnotations: IdentifiedManager<PointAnnotation>): void {
+        let obj = pointAnnotations.ToObject((value: PointAnnotation) => {
+            let obj = value.ToObject();
+            return obj;
+        });
+        let json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.PointAnnotationsName, json);
+    }
+
+    public static CategoriesExist(): boolean {
+        let output = LocalStorageManager.CategoriesName in localStorage;
+        return output;
+    }
+
+    public static LoadCategories(): CategoriesManager {
+        let exists = LocalStorageManager.CategoriesExist();
+        if(!exists) {
+            return null;
+        }
+
+        let json = localStorage.getItem(LocalStorageManager.CategoriesName);
+        let obj = JSON.parse(json);
+
+        let output = new CategoriesManager();
+        output.FromObject(obj)
+
+        return output;
+    }
+
+    public static SaveCategories(categories: CategoriesManager): void {
+        let obj = categories.ToObject();
+        let json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.CategoriesName, json);
+    }
 
     public static LightingSpecificationExists(): boolean {
         let output = LocalStorageManager.LightingSpecificationName in localStorage;

@@ -9,6 +9,8 @@ import { SetPreferredCameraSpecificationMode } from "./SetPreferredCameraSpecifi
 import { SelfDisposingMode } from "./SelfDisposingMode";
 import { SetLightsMode } from "./SetLightsMode";
 import { PointMode } from "./PointMode";
+import { PointAnnotationMode } from "./PointAnnotationMode";
+import { CategoryManagementMode } from "./CategoryManagementMode";
 
 
 export class ModeFactory implements IFactory<string, IMode> {
@@ -22,8 +24,16 @@ export class ModeFactory implements IFactory<string, IMode> {
     public Construct(id: string): IMode {
         let output: IMode;
         switch (id) {
+            case CategoryManagementMode.ID:
+                output = new CategoryManagementMode(this.ControlPanel);
+                break;
+
             case InfoMode.ID:
                 output = new InfoMode(this.ControlPanel);
+                break;
+
+            case PointAnnotationMode.ID:
+                output = new PointAnnotationMode(this.ControlPanel);
                 break;
 
             case PointMode.ID:

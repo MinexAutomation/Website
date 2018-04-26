@@ -72,12 +72,12 @@ export class ButtonControl {
         this.Enabled = false;
     }
     private zClick = new Event<ButtonControl, MouseEvent>();
-    public get Click() : IEvent<ButtonControl, MouseEvent> {
+    public get Click(): IEvent<ButtonControl, MouseEvent> {
         return this.zClick.AsEvent();
     }
 
 
-    public constructor(parent: HTMLElement, text?: string, id?: string) {
+    public constructor(parent?: HTMLElement, text?: string, id?: string) {
         this.zHtmlElement = document.createElement('div');
         this.zHtmlElement.className = ButtonControl.ButtonCssClassName;
         if (text !== undefined) {
@@ -87,7 +87,9 @@ export class ButtonControl {
             this.zHtmlElement.id = id;
         }
 
-        parent.appendChild(this.HtmlElement);
+        if (parent) {
+            parent.appendChild(this.HtmlElement);
+        }
 
         this.Enable();
     }

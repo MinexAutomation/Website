@@ -61,4 +61,15 @@ export class StorageVector3 implements IVector3 {
         this.Y = vector.y;
         this.Z = vector.z;
     }
+
+    public Clone(): StorageVector3 {
+        let output = new StorageVector3(this.X, this.Y, this.Z);
+        return output;
+    }
+
+    public Copy(other: StorageVector3): void {
+        this.X = other.X;
+        this.Y = other.Y;
+        this.Z = other.Z;
+    }
 }

@@ -85,4 +85,22 @@ export class ControlPanel {
         // `;
         // this.StyleSheet.addRule('.' + ControlPanel.ControlButtonClassName, rule);
     }
+
+    public CreateChildControlElement(htmlElementID: string): HTMLElement {
+        let output = document.createElement('div');
+        this.HtmlElement.appendChild(output);
+        output.id = htmlElementID;
+        output.className = ControlPanel.ControlClassName;
+
+        return output;
+    }
+
+    public CreateChildControlTitle(childControlHtmlElement: HTMLElement, value: string): HTMLElement {
+        let output = document.createElement('p');
+        childControlHtmlElement.appendChild(output);
+        output.className = ControlPanel.ControlTitleClassName;
+        output.innerHTML = value;
+
+        return output;
+    }
 }

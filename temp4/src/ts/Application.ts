@@ -19,7 +19,7 @@ import { Modal } from "./Modal";
 import { PointMode } from "./Modes/PointMode";
 import { LightingSpecification } from "./LightingSpecification";
 import { PointAnnotationMode } from "./Modes/PointAnnotationMode";
-import { Color } from "three";
+import { Color, Mesh, Vector3, SphereGeometry, MeshBasicMaterial } from "three";
 import { CategoriesManager } from "./Annotations/CategoriesManager";
 import { CategoryManagementMode } from "./Modes/CategoryManagementMode";
 import { InformationBox } from "./Common/Boxes/InformationBox";
@@ -27,6 +27,8 @@ import { MessageBox } from "./Common/Boxes/MessageBox";
 import { EditorBox, EditorBoxResult } from "./Common/Boxes/EditorBox";
 import { IdentifiedManager } from "./Common/IdentifiedManager";
 import { PointAnnotation } from "./Annotations/PointAnnotation";
+import { EventedArray } from "./Common/EventedArray";
+import { StorageVector3 } from "./Classes/StorageVector3";
 
 
 export class Application {
@@ -44,6 +46,7 @@ export class Application {
     public static readonly PreferredCameraSpecification = new NotifyingValueProperty<CameraSpecification>(new CameraSpecification());
     public static readonly CategoryManager = new CategoriesManager();
     public static readonly PointAnnotationsManager = new IdentifiedManager<PointAnnotation>();
+    public static readonly PointMeshes = new EventedArray<Mesh>();
 
 
     public static Main(): void {
@@ -98,7 +101,7 @@ export class Application {
 
     private static SetupTour() {
         let tour = new Tour();
-        
+
         let coordinateSystemPreviouslySet = LocalStorageManager.PreferredCoordinateSystemExists();
         if (coordinateSystemPreviouslySet) {
             let coordinateSystem = LocalStorageManager.LoadPreferredCoordinateSystem();
@@ -107,13 +110,13 @@ export class Application {
         } else {
             tour.AddStep(() => {
                 Application.ModesControl.SetCurrentModeByID(SetPreferredCoordinateSystemMode.ID);
-                
+
                 Application.PreferredCoordinateSystem.ValueChanged.SubscribeOnce(() => {
                     tour.NextStep();
                 });
             });
         }
-        
+
         let cameraSpecificationPreviouslySet = LocalStorageManager.PreferredCameraSpecificationExists();
         if (cameraSpecificationPreviouslySet) {
             let cameraSpecification = LocalStorageManager.LoadPreferredCameraSpecification();
@@ -122,13 +125,13 @@ export class Application {
         } else {
             tour.AddStep(() => {
                 Application.ModesControl.SetCurrentModeByID(SetPreferredCameraSpecificationMode.ID);
-                
+
                 Application.PreferredCameraSpecification.ValueChanged.SubscribeOnce(() => {
                     tour.NextStep();
                 });
             });
         }
-        
+
         let lightingSpecificationPreviouslySet = LocalStorageManager.LightingSpecificationExists();
         if (lightingSpecificationPreviouslySet) {
             let lightingSpecification = LocalStorageManager.LoadLightingSpecification();
@@ -161,7 +164,7 @@ export class Application {
         }
 
         let needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
-        if(needsTour) {
+        if (needsTour) {
             let instructions = Application.GetTourInstructions(tour);
             tour.InsertStep(instructions, 0);
 
@@ -286,7 +289,7 @@ export class Application {
 
         // let json = JSON.stringify(a);
 
-        InformationBox.Show('Hello!', 'A Hello');
+        // InformationBox.Show('Hello!', 'A Hello');
 
         // MessageBox.Show('Hello!', 'A Hello.', 'AbortRetryIgnore');
 
@@ -306,6 +309,57 @@ export class Application {
         //     editor.Instance = valueText.value;
         // };
         // editor.Show();
+
+        Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+    }
+
+    private static WebGLOutputMouseDown = (event: MouseEvent) => {
+        let camera = Application.Theater.Camera;
+        let scene = Application.Theater.Scene;
+
+        let vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+        vector = vector.unproject(camera);
+
+        let raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+        // Were any already added points hit?
+        let meshes = Application.PointMeshes.Values;
+        let pointIntersects = raycaster.intersectObjects(meshes);
+        if (pointIntersects.length > 0) {
+            console.log('You hit a point!');
+        } else {
+            console.log('No points hit.');
+
+            // Add a point if we clicked anywhere on the miniature.
+            let miniatureIntersects = raycaster.intersectObjects(Application.Miniature.Object.children);
+            if (0 < miniatureIntersects.length) {
+                let firstIntersect = miniatureIntersects[0];
+                console.log(firstIntersect.point);
+
+                Application.AddPoint(firstIntersect.point);
+            }
+        }
+    }
+
+    private static AddPoint(point: Vector3): void {
+        // Add the point annotation.
+        let pointAnnotationID = Application.PointAnnotationsManager.GetNextID();
+        let standardPosition = CoordinateSystemConversion.ConvertPointPreferredToStandard(point, Application.PreferredCoordinateSystem.Value);
+        let standardPositionStorageVector = new StorageVector3(standardPosition.x, standardPosition.y, standardPosition.z);
+        let pointAnnotation = new PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, undefined, standardPositionStorageVector);
+        Application.PointAnnotationsManager.Add(pointAnnotation);
+
+        // Add the visual point.
+        Application.DrawPoint(point);
+    }
+
+    public static DrawPoint(point: Vector3): void {
+        let selectedPointGeometry = new SphereGeometry(1);
+        let selectedPointMaterial = new MeshBasicMaterial({ color: 0x0000ff });
+        let selectedPointMesh = new Mesh(selectedPointGeometry, selectedPointMaterial);
+        selectedPointMesh.position.copy(point);
+        Application.PointMeshes.Add(selectedPointMesh);
+        Application.Theater.Scene.add(selectedPointMesh);
     }
 
     private static SubMain() {

@@ -53003,6 +53003,7 @@ exports.VisualSpecification = VisualSpecification;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var Theater_1 = __webpack_require__(/*! ./Theater */ "./src/ts/Theater.js");
 var TrackballController_1 = __webpack_require__(/*! ./Controllers/TrackballController */ "./src/ts/Controllers/TrackballController.js");
 var Miniature_1 = __webpack_require__(/*! ./Miniature */ "./src/ts/Miniature.js");
@@ -53020,10 +53021,14 @@ var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./Modes/SetPref
 var SetPreferredCameraSpecificationMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCameraSpecificationMode */ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js");
 var SetLightsMode_1 = __webpack_require__(/*! ./Modes/SetLightsMode */ "./src/ts/Modes/SetLightsMode.js");
 var PointAnnotationMode_1 = __webpack_require__(/*! ./Modes/PointAnnotationMode */ "./src/ts/Modes/PointAnnotationMode.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var CategoriesManager_1 = __webpack_require__(/*! ./Annotations/CategoriesManager */ "./src/ts/Annotations/CategoriesManager.js");
 var CategoryManagementMode_1 = __webpack_require__(/*! ./Modes/CategoryManagementMode */ "./src/ts/Modes/CategoryManagementMode.js");
 var InformationBox_1 = __webpack_require__(/*! ./Common/Boxes/InformationBox */ "./src/ts/Common/Boxes/InformationBox.js");
 var IdentifiedManager_1 = __webpack_require__(/*! ./Common/IdentifiedManager */ "./src/ts/Common/IdentifiedManager.js");
+var PointAnnotation_1 = __webpack_require__(/*! ./Annotations/PointAnnotation */ "./src/ts/Annotations/PointAnnotation.js");
+var EventedArray_1 = __webpack_require__(/*! ./Common/EventedArray */ "./src/ts/Common/EventedArray.js");
+var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
 var Application = /** @class */ (function () {
     function Application() {
     }
@@ -53211,7 +53216,7 @@ var Application = /** @class */ (function () {
         // a.push(1);
         // a.push(1);
         // let json = JSON.stringify(a);
-        InformationBox_1.InformationBox.Show('Hello!', 'A Hello');
+        // InformationBox.Show('Hello!', 'A Hello');
         // MessageBox.Show('Hello!', 'A Hello.', 'AbortRetryIgnore');
         // let editor = new EditorBox<string>('', 'A String');
         // editor.Closed.Subscribe((result: EditorBoxResult<string>) => {
@@ -53229,6 +53234,25 @@ var Application = /** @class */ (function () {
         //     editor.Instance = valueText.value;
         // };
         // editor.Show();
+        Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+    };
+    Application.AddPoint = function (point) {
+        // Add the point annotation.
+        var pointAnnotationID = Application.PointAnnotationsManager.GetNextID();
+        var standardPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(point, Application.PreferredCoordinateSystem.Value);
+        var standardPositionStorageVector = new StorageVector3_1.StorageVector3(standardPosition.x, standardPosition.y, standardPosition.z);
+        var pointAnnotation = new PointAnnotation_1.PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, undefined, standardPositionStorageVector);
+        Application.PointAnnotationsManager.Add(pointAnnotation);
+        // Add the visual point.
+        Application.DrawPoint(point);
+    };
+    Application.DrawPoint = function (point) {
+        var selectedPointGeometry = new three_1.SphereGeometry(1);
+        var selectedPointMaterial = new three_1.MeshBasicMaterial({ color: 0x0000ff });
+        var selectedPointMesh = new three_1.Mesh(selectedPointGeometry, selectedPointMaterial);
+        selectedPointMesh.position.copy(point);
+        Application.PointMeshes.Add(selectedPointMesh);
+        Application.Theater.Scene.add(selectedPointMesh);
     };
     Application.SubMain = function () {
         Application.Theater = new Theater_1.Theater();
@@ -53257,11 +53281,35 @@ var Application = /** @class */ (function () {
     Application.PreferredCameraSpecification = new NotifyingValueProperty_1.NotifyingValueProperty(new CameraSpecification_1.CameraSpecification());
     Application.CategoryManager = new CategoriesManager_1.CategoriesManager();
     Application.PointAnnotationsManager = new IdentifiedManager_1.IdentifiedManager();
+    Application.PointMeshes = new EventedArray_1.EventedArray();
     Application.MiniatureLoadingProgressHandler = function (ev) {
         LoadingBlocker_1.LoadingBlocker.Message = 'Loading... ' + ((ev.loaded / ev.total) * 100).toFixed(0) + '%';
     };
     Application.MiniatureLoadingErrorHandler = function (ev) {
         LoadingBlocker_1.LoadingBlocker.Message = 'Error: ' + ev.message;
+    };
+    Application.WebGLOutputMouseDown = function (event) {
+        var camera = Application.Theater.Camera;
+        var scene = Application.Theater.Scene;
+        var vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+        vector = vector.unproject(camera);
+        var raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+        // Were any already added points hit?
+        var meshes = Application.PointMeshes.Values;
+        var pointIntersects = raycaster.intersectObjects(meshes);
+        if (pointIntersects.length > 0) {
+            console.log('You hit a point!');
+        }
+        else {
+            console.log('No points hit.');
+            // Add a point if we clicked anywhere on the miniature.
+            var miniatureIntersects = raycaster.intersectObjects(Application.Miniature.Object.children);
+            if (0 < miniatureIntersects.length) {
+                var firstIntersect = miniatureIntersects[0];
+                console.log(firstIntersect.point);
+                Application.AddPoint(firstIntersect.point);
+            }
+        }
     };
     return Application;
 }());
@@ -53316,6 +53364,10 @@ var CameraSpecification = /** @class */ (function () {
         this.Up.copy(up);
         var target = StorageVector3_1.StorageVector3.FromObject(obj.Target);
         this.Target.copy(target);
+    };
+    CameraSpecification.prototype.Clone = function () {
+        var output = new CameraSpecification(this.Position.clone(), this.Rotation.clone(), this.Up.clone(), this.Target.clone());
+        return output;
     };
     return CameraSpecification;
 }());
@@ -54415,10 +54467,13 @@ var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ ".
 var Modal_1 = __webpack_require__(/*! ../Modal */ "./src/ts/Modal.js");
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var AxesTransformControl = /** @class */ (function () {
     function AxesTransformControl(controlPanel) {
         var _this = this;
-        this.SaveButtonOnClick = function () {
+        this.FinishedButton = new ButtonControl_1.ButtonControl(undefined, 'Finished');
+        this.zFinished = new SignalEvent_1.SignalEvent();
+        this.FinishedClick = function () {
             var coordinateSystem = new CoordinateSystemConversion_1.CoordinateSystemConversion();
             var additionalTranslation = Application_1.Application.Theater.Axes.position.clone();
             var additionalRotationMatrix = new three_1.Matrix4();
@@ -54459,10 +54514,6 @@ var AxesTransformControl = /** @class */ (function () {
             }
             Application_1.Application.ApplyPreferredCoordinateSystem();
         };
-        this.ApplyButtonOnClick = function () {
-            // Perform one last save action.
-            _this.SaveButtonOnClick();
-        };
         this.TransformToggleButtonOnClick = function () {
             _this.Enable = !_this.Enable;
         };
@@ -54479,12 +54530,10 @@ var AxesTransformControl = /** @class */ (function () {
         this.InstructionsButton.Click.Subscribe(function () { _this.ShowInstructions(); });
         this.TransformToggleButton = new ButtonControl_1.ButtonControl(this.HtmlElement);
         this.TransformToggleButton.Click.Subscribe(this.TransformToggleButtonOnClick);
-        this.SaveButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Save');
-        this.SaveButton.Click.Subscribe(this.SaveButtonOnClick);
         this.LoadButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Load');
         this.LoadButton.Click.Subscribe(this.LoadButtonOnClick);
-        this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.Click.Subscribe(this.ApplyButtonOnClick);
+        this.HtmlElement.appendChild(this.FinishedButton.HtmlElement);
+        this.FinishedButton.Click.Subscribe(this.FinishedClick);
         this.Enable = false;
         this.ShowInstructions();
     }
@@ -54498,15 +54547,11 @@ var AxesTransformControl = /** @class */ (function () {
             this.SetTransformToggleButtonText();
             if (this.zEnable) {
                 this.Controller.Attach(Application_1.Application.Theater.Axes);
-                this.SaveButton.Enable();
                 this.LoadButton.Enable();
-                this.ApplyButton.Enable();
             }
             else {
                 this.Controller.Detach();
-                this.SaveButton.Disable();
                 this.LoadButton.Disable();
-                this.ApplyButton.Disable();
             }
         },
         enumerable: true,
@@ -54519,19 +54564,26 @@ var AxesTransformControl = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(AxesTransformControl.prototype, "Finished", {
+        get: function () {
+            return this.zFinished.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
     AxesTransformControl.prototype.ShowInstructions = function () {
         Modal_1.Modal.Initialize();
         Modal_1.Modal.HeaderMessage = 'Setup Your Preferred Origin and Rotation';
         var bodyElement = Modal_1.Modal.GetBodyHtmlElement();
         var p1 = document.createElement('p');
         bodyElement.appendChild(p1);
-        p1.innerHTML = 'Miniatures created via 3D reconstruction come with their own origin and rotation. Here you can set YOUR preferred origin and rotation and have this setting automatically applied the next time you view this miniature.';
+        p1.innerHTML = 'Miniatures created via 3D reconstruction come with their own origin and rotation. Here you can set the preferred origin and rotation that will automatically be applied in the future.';
         var p2 = document.createElement('p');
         bodyElement.appendChild(p2);
         p2.innerHTML = 'Click <b>Enable</b> in the Axes Transform menu to move and rotate the axes. Click <b>Disable</b> to go back to moving and rotating the view.';
         var p3 = document.createElement('p');
         bodyElement.appendChild(p3);
-        p3.innerHTML = 'When you have placed the axes and rotated the model to provide a good alignment, click <b>Apply</b>.';
+        p3.innerHTML = 'When ready, click <b>Finished</b>.';
         Modal_1.Modal.Show();
     };
     AxesTransformControl.prototype.SetTransformToggleButtonText = function () {
@@ -54711,8 +54763,8 @@ var CameraTransformControl = /** @class */ (function () {
         this.HtmlElement.className = ControlPanel_1.ControlPanel.ControlClassName;
         this.InstructionsButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Show Instructions');
         this.InstructionsButton.Click.Subscribe(function () { _this.ShowInstructions(); });
-        this.ApplyButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.Click.Subscribe(this.OnApply);
+        this.FinishedButton = new ButtonControl_1.ButtonControl(this.HtmlElement, 'Finished');
+        this.FinishedButton.Click.Subscribe(this.OnApply);
         this.ShowInstructions();
     }
     Object.defineProperty(CameraTransformControl.prototype, "Disposed", {
@@ -54732,10 +54784,10 @@ var CameraTransformControl = /** @class */ (function () {
         var bodyElement = Modal_1.Modal.GetBodyHtmlElement();
         var p1 = document.createElement('p');
         bodyElement.appendChild(p1);
-        p1.innerHTML = 'Use the mouse to move until you have the view you want to save as YOUR initial view of the miniature. This setting will be automatically applied the next time you view this miniature';
+        p1.innerHTML = 'Use the mouse to move and rotate until you have the view you want to save as YOUR initial view of the miniature. This setting will be automatically applied the next time you view this miniature';
         var p2 = document.createElement('p');
         bodyElement.appendChild(p2);
-        p2.innerHTML = 'When ready, click <b>Apply</b>.';
+        p2.innerHTML = 'When ready, click <b>Finished</b>.';
         Modal_1.Modal.Show();
     };
     CameraTransformControl.HtmlElementId = 'CameraTransformControl';
@@ -56603,6 +56655,8 @@ var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ ".
 var EditorBox_1 = __webpack_require__(/*! ../Common/Boxes/EditorBox */ "./src/ts/Common/Boxes/EditorBox.js");
 var template = __webpack_require__(/*! ./PointAnnotationMode.html */ "./src/ts/Modes/PointAnnotationMode.html");
 __webpack_require__(/*! ./PointAnnotationMode.css */ "./src/ts/Modes/PointAnnotationMode.css");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var PointAnnotationMode = /** @class */ (function () {
     function PointAnnotationMode(controlPanel) {
         var _this = this;
@@ -56630,6 +56684,7 @@ var PointAnnotationMode = /** @class */ (function () {
         this.LoadClick = function () {
             var loaded = LocalStorageManager_1.LocalStorageManager.LoadPointAnnotations();
             _this.Annotations.Copy(loaded);
+            PointAnnotationMode.DrawAllPoints();
             _this.FillSelect();
         };
         this.SaveClick = function () {
@@ -56845,6 +56900,13 @@ var PointAnnotationMode = /** @class */ (function () {
         this.RemoveButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Remove');
         this.RemoveButton.Click.Subscribe(this.RemoveClick);
     }
+    PointAnnotationMode.DrawAllPoints = function () {
+        Application_1.Application.PointAnnotationsManager.Values.forEach(function (pointAnnotation) {
+            var standardPoint = new three_1.Vector3(pointAnnotation.StandardLocation.X, pointAnnotation.StandardLocation.Y, pointAnnotation.StandardLocation.Z);
+            var preferredPoint = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPoint, Application_1.Application.PreferredCoordinateSystem.Value);
+            Application_1.Application.DrawPoint(preferredPoint);
+        });
+    };
     Object.defineProperty(PointAnnotationMode.prototype, "ID", {
         get: function () {
             return PointAnnotationMode.ID;

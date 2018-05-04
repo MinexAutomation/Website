@@ -13,6 +13,8 @@ import { EditorBox, EditorBoxResult } from "../Common/Boxes/EditorBox";
 
 import * as template from "./PointAnnotationMode.html";
 import "./PointAnnotationMode.css";
+import { CoordinateSystemConversion } from "../CoordinateSystemConversion";
+import { Vector3 } from "three";
 
 
 export class PointAnnotationMode implements IMode {
@@ -30,6 +32,16 @@ export class PointAnnotationMode implements IMode {
     public static readonly EditorModelLocationHtmlElementID = 'PointAnnotations-EditorModelLocation';
     public static readonly EditorStandardLocationHtmlElementID = 'PointAnnotations-EditorStandardLocation';
     public static readonly EditorPointIDHtmlElementID = 'PointAnnotations-EditorPointID';
+
+
+    private static DrawAllPoints(): void {
+        Application.PointAnnotationsManager.Values.forEach(pointAnnotation => {
+            let standardPoint = new Vector3(pointAnnotation.StandardLocation.X, pointAnnotation.StandardLocation.Y, pointAnnotation.StandardLocation.Z);
+            let preferredPoint = CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPoint, Application.PreferredCoordinateSystem.Value);
+
+            Application.DrawPoint(preferredPoint);
+        });
+    }
 
 
     public get ID(): string {
@@ -143,6 +155,8 @@ export class PointAnnotationMode implements IMode {
     private LoadClick = () => {
         let loaded = LocalStorageManager.LoadPointAnnotations();
         this.Annotations.Copy(loaded);
+
+        PointAnnotationMode.DrawAllPoints();
 
         this.FillSelect();
     }

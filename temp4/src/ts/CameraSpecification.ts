@@ -47,4 +47,9 @@ export class CameraSpecification {
         let target = StorageVector3.FromObject(obj.Target);
         this.Target.copy(target);
     }
+
+    public Clone(): CameraSpecification {
+        let output = new CameraSpecification(this.Position.clone(), this.Rotation.clone(), this.Up.clone(), this.Target.clone());
+        return output;
+    }
 }

@@ -13,7 +13,7 @@ export class CameraTransformControl {
 
     private readonly HtmlElement: HTMLDivElement;
     private readonly InstructionsButton: ButtonControl;
-    private readonly ApplyButton: ButtonControl;
+    private readonly FinishedButton: ButtonControl;
     private readonly zDisposed: SignalEvent = new SignalEvent();
     public get Disposed(): ISignalEvent {
         return this.zDisposed.AsEvent();
@@ -29,8 +29,8 @@ export class CameraTransformControl {
         this.InstructionsButton = new ButtonControl(this.HtmlElement, 'Show Instructions');
         this.InstructionsButton.Click.Subscribe(() => { this.ShowInstructions(); });
 
-        this.ApplyButton = new ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.Click.Subscribe(this.OnApply);
+        this.FinishedButton = new ButtonControl(this.HtmlElement, 'Finished');
+        this.FinishedButton.Click.Subscribe(this.OnApply);
 
         this.ShowInstructions();
     }
@@ -41,7 +41,6 @@ export class CameraTransformControl {
     }
 
     private OnApply = () => {
-
         Application.PreferredCameraSpecification.Value.Position.copy(Application.Theater.Camera.position);
         Application.PreferredCameraSpecification.Value.Rotation.copy(Application.Theater.Camera.rotation.toVector3());
         Application.PreferredCameraSpecification.Value.Up.copy(Application.Theater.Camera.up);
@@ -52,7 +51,10 @@ export class CameraTransformControl {
         let target = new Vector3();
         target.copy(Application.Theater.Camera.position);
         target.add(cameraDirection);
+
+        let value = Application.PreferredCameraSpecification.Value;
         Application.PreferredCameraSpecification.Value.Target.copy(target);
+        Application.PreferredCameraSpecification;
 
         LocalStorageManager.SavePreferredCameraSpecification(Application.PreferredCameraSpecification.Value);
 
@@ -68,11 +70,11 @@ export class CameraTransformControl {
 
         let p1 = document.createElement('p');
         bodyElement.appendChild(p1);
-        p1.innerHTML = 'Use the mouse to move until you have the view you want to save as YOUR initial view of the miniature. This setting will be automatically applied the next time you view this miniature';
+        p1.innerHTML = 'Use the mouse to move and rotate until you have the view you want to save as YOUR initial view of the miniature. This setting will be automatically applied the next time you view this miniature';
 
         let p2 = document.createElement('p');
         bodyElement.appendChild(p2);
-        p2.innerHTML = 'When ready, click <b>Apply</b>.';
+        p2.innerHTML = 'When ready, click <b>Finished</b>.';
 
         Modal.Show();
     }

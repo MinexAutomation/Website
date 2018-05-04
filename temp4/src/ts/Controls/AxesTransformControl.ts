@@ -6,6 +6,7 @@ import { LocalStorageManager } from "../LocalStorageManager";
 import { Modal } from "../Modal";
 import { CoordinateSystemConversion } from "../CoordinateSystemConversion";
 import { Euler, Matrix4, Vector4 } from "three";
+import { ISignalEvent, SignalEvent } from "../Common/Events/SignalEvent";
 
 
 export class AxesTransformControl {
@@ -16,9 +17,8 @@ export class AxesTransformControl {
     public readonly HtmlElement: HTMLDivElement;
     private readonly InstructionsButton: ButtonControl;
     private readonly TransformToggleButton: ButtonControl;
-    private readonly SaveButton: ButtonControl;
     private readonly LoadButton: ButtonControl;
-    public readonly ApplyButton: ButtonControl;
+    private readonly FinishedButton: ButtonControl = new ButtonControl(undefined, 'Finished');
 
 
     private zEnable: boolean;
@@ -33,20 +33,20 @@ export class AxesTransformControl {
         if (this.zEnable) {
             this.Controller.Attach(Application.Theater.Axes);
 
-            this.SaveButton.Enable();
             this.LoadButton.Enable();
-            this.ApplyButton.Enable();
         } else {
             this.Controller.Detach();
 
-            this.SaveButton.Disable();
             this.LoadButton.Disable();
-            this.ApplyButton.Disable();
         }
     }
     private zController: AxesTransformController;
     public get Controller(): AxesTransformController {
         return this.zController;
+    }
+    private zFinished: SignalEvent = new SignalEvent();
+    public get Finished() : ISignalEvent {
+        return this.zFinished.AsEvent();
     }
 
 
@@ -69,14 +69,11 @@ export class AxesTransformControl {
         this.TransformToggleButton = new ButtonControl(this.HtmlElement);
         this.TransformToggleButton.Click.Subscribe(this.TransformToggleButtonOnClick)
 
-        this.SaveButton = new ButtonControl(this.HtmlElement, 'Save');
-        this.SaveButton.Click.Subscribe(this.SaveButtonOnClick);
-
         this.LoadButton = new ButtonControl(this.HtmlElement, 'Load');
         this.LoadButton.Click.Subscribe(this.LoadButtonOnClick);
 
-        this.ApplyButton = new ButtonControl(this.HtmlElement, 'Apply');
-        this.ApplyButton.Click.Subscribe(this.ApplyButtonOnClick);
+        this.HtmlElement.appendChild(this.FinishedButton.HtmlElement);
+        this.FinishedButton.Click.Subscribe(this.FinishedClick);
 
         this.Enable = false;
 
@@ -92,7 +89,7 @@ export class AxesTransformControl {
 
         let p1 = document.createElement('p');
         bodyElement.appendChild(p1);
-        p1.innerHTML = 'Miniatures created via 3D reconstruction come with their own origin and rotation. Here you can set YOUR preferred origin and rotation and have this setting automatically applied the next time you view this miniature.';
+        p1.innerHTML = 'Miniatures created via 3D reconstruction come with their own origin and rotation. Here you can set the preferred origin and rotation that will automatically be applied in the future.';
 
         let p2 = document.createElement('p');
         bodyElement.appendChild(p2);
@@ -100,12 +97,12 @@ export class AxesTransformControl {
 
         let p3 = document.createElement('p');
         bodyElement.appendChild(p3);
-        p3.innerHTML = 'When you have placed the axes and rotated the model to provide a good alignment, click <b>Apply</b>.';
+        p3.innerHTML = 'When ready, click <b>Finished</b>.';
 
         Modal.Show();
     }
 
-    private SaveButtonOnClick = () => {
+    private FinishedClick = () => {
         let coordinateSystem = new CoordinateSystemConversion();
 
         let additionalTranslation = Application.Theater.Axes.position.clone();
@@ -162,11 +159,6 @@ export class AxesTransformControl {
             Application.PreferredCoordinateSystem.Value = cs;
         }
         Application.ApplyPreferredCoordinateSystem();
-    }
-
-    private ApplyButtonOnClick = () => {
-        // Perform one last save action.
-        this.SaveButtonOnClick();
     }
 
     private TransformToggleButtonOnClick = () => {

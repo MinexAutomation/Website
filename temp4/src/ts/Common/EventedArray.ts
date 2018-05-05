@@ -21,6 +21,9 @@ export class EventedArray<T> {
     public get Values(): T[] {
         return this.zValues.slice();
     }
+    public get Length(): number {
+        return this.zValues.length;
+    }
 
 
     protected zChanged = new SimpleEvent<EventedArrayChanged<T>>();

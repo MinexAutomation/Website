@@ -14,7 +14,11 @@ import { EditorBox, EditorBoxResult } from "../Common/Boxes/EditorBox";
 import * as template from "./PointAnnotationMode.html";
 import "./PointAnnotationMode.css";
 import { CoordinateSystemConversion } from "../CoordinateSystemConversion";
-import { Vector3 } from "three";
+import { Vector3, InstancedBufferAttribute } from "three";
+import { Vector3My } from "../Classes/Vectors/Vector3My";
+import { PointVisualsManager } from "../Classes/PointVisualsManager";
+import { Category } from "../Annotations/Category";
+import { VisualSpecification } from "../Classes/VisualSpecification";
 
 
 export class PointAnnotationMode implements IMode {
@@ -34,16 +38,6 @@ export class PointAnnotationMode implements IMode {
     public static readonly EditorPointIDHtmlElementID = 'PointAnnotations-EditorPointID';
 
 
-    private static DrawAllPoints(): void {
-        Application.PointAnnotationsManager.Values.forEach(pointAnnotation => {
-            let standardPoint = new Vector3(pointAnnotation.StandardLocation.X, pointAnnotation.StandardLocation.Y, pointAnnotation.StandardLocation.Z);
-            let preferredPoint = CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPoint, Application.PreferredCoordinateSystem.Value);
-
-            Application.DrawPoint(preferredPoint);
-        });
-    }
-
-
     public get ID(): string {
         return PointAnnotationMode.ID;
     }
@@ -52,6 +46,7 @@ export class PointAnnotationMode implements IMode {
         return this.zDisposed.AsEvent();
     }
     private Annotations = Application.PointAnnotationsManager;
+    private AnnotationVisuals = new Array<PointVisualsManager>();
     private readonly PluralHtmlElement: HTMLElement
     private readonly LoadButton: ButtonControl;
     private readonly SaveButton: ButtonControl;
@@ -77,12 +72,13 @@ export class PointAnnotationMode implements IMode {
 
 
     public constructor(controlPanel: ControlPanel) {
+        // Setup controls.
         this.PluralHtmlElement = controlPanel.CreateChildControlElement(PointAnnotationMode.PluralHtmlElementID);
 
         controlPanel.CreateChildControlTitle(this.PluralHtmlElement, 'Point Annotations');
 
         this.LoadButton = new ButtonControl(this.PluralHtmlElement, 'Load');
-        this.LoadButton.Click.Subscribe(this.LoadClick)
+        this.LoadButton.Click.Subscribe(this.LoadClick);
 
         this.SaveButton = new ButtonControl(this.PluralHtmlElement, 'Save');
         this.SaveButton.Click.Subscribe(this.SaveClick);
@@ -97,7 +93,6 @@ export class PointAnnotationMode implements IMode {
         this.Select = document.createElement('select');
         this.SingularHtmlElement.appendChild(this.Select);
         this.FillSelect();
-        this.Annotations.Changed.Subscribe(this.AnnotationsChanged);
 
         this.AddButton = new ButtonControl(this.SingularHtmlElement, 'Add');
         this.AddButton.Click.Subscribe(this.AddClick);
@@ -107,6 +102,12 @@ export class PointAnnotationMode implements IMode {
 
         this.RemoveButton = new ButtonControl(this.SingularHtmlElement, 'Remove');
         this.RemoveButton.Click.Subscribe(this.RemoveClick);
+
+        // Connect to events of the annotation array.
+        this.Annotations.Changed.Subscribe((changed: EventedArrayChanged<PointAnnotation>) => this.AnnotationsChanged(changed));
+
+        // Place the initial annotations.
+        this.ResetAnnotations();
     }
 
     private FillSelect() {
@@ -128,35 +129,67 @@ export class PointAnnotationMode implements IMode {
         this.Annotations.Changed.Unsubscribe(this.AnnotationsChanged);
     }
 
-    private AnnotationsChanged = (changed: EventedArrayChanged<PointAnnotation>) => {
+    private AnnotationsChanged(changed: EventedArrayChanged<PointAnnotation>) {
         switch (changed.Type) {
             case 'Added':
-                this.FillSelect();
+                this.AddAnnotation(changed.Value);
                 break;
 
             case 'Inserted':
-                this.FillSelect();
+                this.AddAnnotation(changed.Value);
                 break;
 
             case 'Removed':
-                this.FillSelect();
+                this.RemoveAnnotation(changed.Value);
                 break;
 
             case 'Reset':
-                this.FillSelect();
+                this.ResetAnnotations();
                 break;
 
             default:
                 // Do nothing.
                 break;
         }
+
+        // Update the select.
+        this.FillSelect();
+    }
+
+    private AddAnnotation(annotation: PointAnnotation): void {
+        let annotationVisual = new PointVisualsManager(annotation);
+        this.AnnotationVisuals.push(annotationVisual);
+    }
+
+    private RemoveAnnotation(annotation: PointAnnotation): void {
+        for (let iIndex = 0; iIndex < this.AnnotationVisuals.length; iIndex++) {
+            const visual = this.AnnotationVisuals[iIndex];
+            if (visual.PointAnnotation === annotation) {
+                this.AnnotationVisuals.splice(iIndex, 1);
+                visual.Dispose();
+            }
+        }
+    }
+
+    private ResetAnnotations(): void {
+        // Remove all.
+        for (let iIndex = 0; iIndex < this.AnnotationVisuals.length; iIndex++) {
+            const visual = this.AnnotationVisuals[iIndex];
+            visual.Dispose();
+        }
+        this.AnnotationVisuals.splice(0);
+
+        // Add for each annotation.
+        let values = this.Annotations.Values;
+        for (let iAnnotation = 0; iAnnotation < values.length; iAnnotation++) {
+            const annotation = values[iAnnotation];
+            this.AddAnnotation(annotation);
+        }
     }
 
     private LoadClick = () => {
         let loaded = LocalStorageManager.LoadPointAnnotations();
         this.Annotations.Copy(loaded);
-
-        PointAnnotationMode.DrawAllPoints();
 
         this.FillSelect();
     }
@@ -182,14 +215,14 @@ export class PointAnnotationMode implements IMode {
     }
 
     private OnWebGlOutputMouseDown = (ev: MouseEvent) => {
-        console.log(this);
+
     }
 
     private EditClick = () => {
         let option = <HTMLOptionElement>this.Select.children[this.Select.selectedIndex];
-        let category = this.Annotations.GetByIDString(option.value);
+        let annotation = this.Annotations.GetByIDString(option.value);
 
-        let instanceForEdit = category.Clone();
+        let instanceForEdit = annotation.Clone();
 
         let editor = new EditorBox<PointAnnotation>(instanceForEdit, 'Edit Point Annotation');
         this.Editor = editor;
@@ -214,26 +247,6 @@ export class PointAnnotationMode implements IMode {
         this.EditorStandardLocationHtmlElement = <HTMLLabelElement>document.getElementById(PointAnnotationMode.EditorStandardLocationHtmlElementID);
         this.EditorPointIDHtmlElement = <HTMLLabelElement>document.getElementById(PointAnnotationMode.EditorPointIDHtmlElementID);
 
-        this.EditorUseCategoryHtmlElement.onchange = () => {
-            if(this.EditorUseCategoryHtmlElement.checked) {
-                this.EditorCategoryHtmlElement.disabled = false;
-                
-                this.EditorColorHtmlElement.style.pointerEvents = 'none';
-                this.EditorColorHtmlElement.style.opacity = '0.5';
-
-                this.EditorSizeHtmlElement.disabled = true;
-                this.EditorTransparencyHtmlElement.disabled = true;
-            } else {
-                this.EditorCategoryHtmlElement.disabled = true;
-
-                this.EditorColorHtmlElement.style.pointerEvents = 'auto';
-                this.EditorColorHtmlElement.style.opacity = '1';
-
-                this.EditorSizeHtmlElement.disabled = false;
-                this.EditorTransparencyHtmlElement.disabled = false;
-            }
-        }
-
         // Start off with the category disabled.
         this.EditorCategoryHtmlElement.disabled = true;
 
@@ -246,148 +259,117 @@ export class PointAnnotationMode implements IMode {
             this.EditorCategoryHtmlElement.appendChild(option);
         }, this);
 
+        // If the point annotation has a category, determine its index, and set the selected index. Note: makes use of the same ordering as categories were added above.
+        if (null !== instanceForEdit.Category) {
+            for (let iCategory = 0; iCategory < categories.length; iCategory++) {
+                const category = categories[iCategory];
+                if (category === instanceForEdit.Category) {
+                    this.EditorCategoryHtmlElement.selectedIndex = iCategory;
+                    break;
+                }
+            }
+        }
+
         // The visuals color picker.
         this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
         this.EditorColorHtmlElement.appendChild(this.EditorVisualsDatGUI.domElement);
 
-        let r = Math.round(editor.Instance.Visuals.Color.R);
-        let g = Math.round(editor.Instance.Visuals.Color.G);
-        let b = Math.round(editor.Instance.Visuals.Color.B);
+        let r = editor.Instance.Visuals.Color.R * 255;
+        let g = editor.Instance.Visuals.Color.G * 255;
+        let b = editor.Instance.Visuals.Color.B * 255;
 
         let tempObj = { ColorValue: [r, g, b], };
         let color = this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
         color.onChange(() => {
-            editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-            editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-            editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-            console.log(editor.Instance.Visuals.Color);
+            editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
         });
 
+        // Set form values.
+        this.EditorNameHtmlElement.value = instanceForEdit.Name;
+        this.EditorDescriptionHtmlElement.value = instanceForEdit.Description;
+        let useCategory = null !== instanceForEdit.Category;
+        this.EditorUseCategoryHtmlElement.checked = useCategory;
+        if (useCategory) {
+            this.SetUseCategoryVisuals();
+        } else {
+            this.SetUseAnnotationVisuals();
+        }
+        this.EditorSizeHtmlElement.value = instanceForEdit.Visuals.Size.toString();
+        this.EditorTransparencyHtmlElement.value = instanceForEdit.Visuals.Transparency.toString();
+        this.EditorStandardLocationHtmlElement.innerHTML = instanceForEdit.StandardLocation.ToString();
 
-        // let nameLabel = document.createElement('label');
-        // body.appendChild(nameLabel);
-        // nameLabel.innerHTML = 'Name:';
+        let standardLocation = instanceForEdit.StandardLocation.ToVector3();
+        let preferredLocation = CoordinateSystemConversion.ConvertPointStandardToPreferred(standardLocation, Application.PreferredCoordinateSystem.Value);
+        let pref = new Vector3My();
+        pref.FromVector3(preferredLocation);
+        this.EditorModelLocationHtmlElement.innerHTML = pref.ToString();
 
-        // let br = document.createElement('br');
-        // body.appendChild(br);
+        this.EditorPointIDHtmlElement.innerHTML = instanceForEdit.ID.toString();
 
-        // let name = document.createElement('input');
-        // body.appendChild(name);
-        // name.type = 'text';
-        // name.name = 'name';
-        // name.placeholder = 'Name...';
-        // name.value = editor.Instance.Name;
-        // name.onchange = () => {
-        //     this.Editor.Instance.Name = name.value;
-        // }
-        // name.style.width = '100%';
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let descriptionLabel = document.createElement('label');
-        // body.appendChild(descriptionLabel);
-        // descriptionLabel.innerHTML = 'Description:'
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let description = document.createElement('textarea');
-        // body.appendChild(description);
-        // description.name = 'description';
-        // description.placeholder = 'Description...';
-        // description.value = editor.Instance.Description;
-        // description.onchange = () => {
-        //     this.Editor.Instance.Description = description.value;
-        // };
-        // description.style.width = '100%'
-
-        // let useCategoryLabel = document.createElement('label');
-        // body.appendChild(useCategoryLabel);
-        // useCategoryLabel.innerHTML = 'Use Category:';
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let useCategory = document.createElement('input');
-        // body.appendChild(useCategory);
-        // useCategory.type = 'checkbox';
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let categoryIDLabel = document.createElement('label');
-        // body.appendChild(categoryIDLabel);
-        // categoryIDLabel.innerHTML = 'Category ID:';
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let categoryID = document.createElement('input');
-        // body.appendChild(categoryID);
-        // categoryID.type = 'text';
-        // categoryID.placeholder = 'Integer ID...'
-        // categoryID.pattern = '\d+';
-        // categoryID.oninvalid = () => {
-        //     console.log('invalid');
-        // }
-
-        // br = document.createElement('br');
-        // body.appendChild(br);
-
-        // let visualPropertiesLabel = document.createElement('label');
-        // body.appendChild(visualPropertiesLabel);
-        // visualPropertiesLabel.innerHTML = 'Visual Properties:'
-
-        // let guiPositioner = document.createElement('div');
-        // body.appendChild(guiPositioner);
-        // guiPositioner.style.paddingBottom = '25px';
-        // guiPositioner.style.left = '0px';
-        // guiPositioner.style.pointerEvents = 'none';
-        // guiPositioner.style.opacity = '0.5';
-
-        // this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
-        // guiPositioner.appendChild(this.EditorVisualsDatGUI.domElement);
-
-        // let r = Math.round(editor.Instance.Visuals.Color.R);
-        // let g = Math.round(editor.Instance.Visuals.Color.G);
-        // let b = Math.round(editor.Instance.Visuals.Color.B);
-
-        // let tempObj = { ColorValue: [r, g, b], };
-        // let color = this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
-        // color.onChange(() => {
-        //     editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-        //     editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-        //     editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-        //     console.log(editor.Instance.Visuals.Color);
-        // });
-        // let size = this.EditorVisualsDatGUI.add(editor.Instance.Visuals, 'Size');
-        // let transparency = this.EditorVisualsDatGUI.add(editor.Instance.Visuals, 'Transparency', 0, 1);
-
-        // // Events.
-        // useCategory.onchange = () => {
-        //     if(useCategory.checked) {
-        //         // categoryID.style.pointerEvents = 'auto';
-        //         // categoryID.style.opacity = '1';
-        //         categoryID.disabled = false;
-        //         guiPositioner.style.pointerEvents = 'auto';
-        //         guiPositioner.style.opacity = '1';
-        //     } else {
-        //         // categoryID.style.pointerEvents = 'none';
-        //         // categoryID.style.opacity = '0.5';
-        //         categoryID.disabled = true;
-        //         guiPositioner.style.pointerEvents = 'none';
-        //         guiPositioner.style.opacity = '0.5';
-        //     }
-        // }
+        // Update temporary instance in response to form changes.
+        this.EditorNameHtmlElement.onchange = () => {
+            this.Editor.Instance.Name = this.EditorNameHtmlElement.value;
+        }
+        this.EditorDescriptionHtmlElement.onchange = () => {
+            this.Editor.Instance.Description = this.EditorDescriptionHtmlElement.value;
+        }
+        this.EditorUseCategoryHtmlElement.onchange = () => {
+            if (this.EditorUseCategoryHtmlElement.checked) {
+                this.SetUseCategoryVisuals();
+                this.Editor.Instance.Category = this.GetCategory(); // Set the category initially.
+            } else {
+                this.SetUseAnnotationVisuals();
+                this.Editor.Instance.Category = null;
+            }
+        }
+        this.EditorCategoryHtmlElement.onchange = () => {
+            this.Editor.Instance.Category = this.GetCategory();
+        }
+        this.EditorSizeHtmlElement.onchange = () => {
+            this.Editor.Instance.Visuals.Size = parseFloat(this.EditorSizeHtmlElement.value);
+        }
+        this.EditorTransparencyHtmlElement.onchange = () => {
+            this.Editor.Instance.Visuals.Transparency = parseFloat(this.EditorTransparencyHtmlElement.value);
+        }
 
         editor.Show();
     }
 
+    private GetCategory(): Category {
+        if (0 < this.EditorCategoryHtmlElement.childNodes.length) {
+            let option = <HTMLOptionElement>this.EditorCategoryHtmlElement.childNodes[this.EditorCategoryHtmlElement.selectedIndex];
+            let IDStr = option.value;
+            let category = Application.CategoryManager.GetCategoryByIDString(IDStr);
+            return category;
+        } else {
+            return null;
+        }
+    }
+
+    private SetUseCategoryVisuals(): void {
+        this.EditorCategoryHtmlElement.disabled = false;
+
+        this.EditorColorHtmlElement.style.pointerEvents = 'none';
+        this.EditorColorHtmlElement.style.opacity = '0.5';
+
+        this.EditorSizeHtmlElement.disabled = true;
+        this.EditorTransparencyHtmlElement.disabled = true;
+    }
+
+    private SetUseAnnotationVisuals(): void {
+        this.EditorCategoryHtmlElement.disabled = true;
+
+        this.EditorColorHtmlElement.style.pointerEvents = 'auto';
+        this.EditorColorHtmlElement.style.opacity = '1';
+
+        this.EditorSizeHtmlElement.disabled = false;
+        this.EditorTransparencyHtmlElement.disabled = false;
+    }
+    
     private EditorClosed = (result: EditorBoxResult<PointAnnotation>) => {
         if (result.Action === 'Accept') {
-            let category = this.Annotations.GetByID(result.Instance.ID);
-            category.Copy(result.Instance);
+            let annotation = this.Annotations.GetByID(result.Instance.ID);
+            annotation.Copy(result.Instance);
         }
 
         this.EditorVisualsDatGUI.destroy();
@@ -408,6 +390,11 @@ export class PointAnnotationMode implements IMode {
 
         this.SingularHtmlElement.remove();
         this.PluralHtmlElement.remove();
+
+        this.AnnotationVisuals.forEach(visual => {
+            visual.Dispose();
+        });
+        this.AnnotationVisuals.splice(0);
 
         this.zDisposed.Dispatch();
     }

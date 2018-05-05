@@ -107,6 +107,9 @@ export class CategoryManagementMode implements IMode {
         let category = this.CategoriesManager.GetCategoryByIDString(option.value);
         let index = this.CategoriesManager.Categories.indexOf(category);
         this.CategoriesManager.Categories.splice(index, 1);
+        
+        category.Dispose();
+
         this.FillSelectCategories();
     }
 
@@ -171,17 +174,14 @@ export class CategoryManagementMode implements IMode {
         this.CategoryVisualsGUI = new dat.GUI({ autoPlace: false });
         guiPositioner.appendChild(this.CategoryVisualsGUI.domElement);
 
-        let r = Math.round(editor.Instance.Visuals.Color.R);
-        let g = Math.round(editor.Instance.Visuals.Color.G);
-        let b = Math.round(editor.Instance.Visuals.Color.B);
+        let r = editor.Instance.Visuals.Color.R * 255;
+        let g = editor.Instance.Visuals.Color.G * 255;
+        let b = editor.Instance.Visuals.Color.B * 255;
 
         let tempObj = { ColorValue: [r, g, b], };
         let color = this.CategoryVisualsGUI.addColor(tempObj, 'ColorValue');
         color.onChange(() => {
-            editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-            editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-            editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-            console.log(editor.Instance.Visuals.Color);
+            editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
         });
         let size = this.CategoryVisualsGUI.add(editor.Instance.Visuals, 'Size');
         let transparency = this.CategoryVisualsGUI.add(editor.Instance.Visuals, 'Transparency', 0, 1);

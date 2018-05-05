@@ -52786,16 +52786,61 @@ exports.CategoriesManager = CategoriesManager;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var VisualSpecification_1 = __webpack_require__(/*! ./VisualSpecification */ "./src/ts/Annotations/VisualSpecification.js");
+var VisualSpecification_1 = __webpack_require__(/*! ../Classes/VisualSpecification */ "./src/ts/Classes/VisualSpecification.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
 var Category = /** @class */ (function () {
     function Category(id, name, description, visuals) {
+        if (id === void 0) { id = Category.DummyCategoryID; }
+        if (name === void 0) { name = ""; }
         if (description === void 0) { description = ""; }
         if (visuals === void 0) { visuals = new VisualSpecification_1.VisualSpecification(); }
+        var _this = this;
+        this.zVisuals = null;
+        this.VisualsChangedHandler = function () {
+            _this.OnChanged();
+        };
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zDisposed = new SimpleEvent_1.SimpleEvent();
         this.ID = id;
         this.Name = name;
         this.Description = description;
         this.Visuals = visuals;
     }
+    Object.defineProperty(Category.prototype, "Visuals", {
+        get: function () {
+            return this.zVisuals;
+        },
+        set: function (value) {
+            if (null !== this.zVisuals) {
+                this.zVisuals.Changed.Unsubscribe(this.VisualsChangedHandler);
+            }
+            this.zVisuals = value;
+            this.zVisuals.Changed.Subscribe(this.VisualsChangedHandler);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Category.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Category.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    Object.defineProperty(Category.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Category.prototype.Dispose = function () {
+        this.Visuals.Changed.Unsubscribe(this.VisualsChangedHandler);
+        this.zDisposed.Dispatch(this);
+    };
     Category.prototype.ToObject = function () {
         var output = {
             ID: this.ID,
@@ -52821,57 +52866,10 @@ var Category = /** @class */ (function () {
         this.Description = other.Description;
         this.Visuals.Copy(other.Visuals);
     };
+    Category.DummyCategoryID = -1;
     return Category;
 }());
 exports.Category = Category;
-
-
-/***/ }),
-
-/***/ "./src/ts/Annotations/ColorSpecification.js":
-/*!**************************************************!*\
-  !*** ./src/ts/Annotations/ColorSpecification.js ***!
-  \**************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var ColorSpecification = /** @class */ (function () {
-    function ColorSpecification(r, g, b) {
-        if (r === void 0) { r = 0; }
-        if (g === void 0) { g = 0; }
-        if (b === void 0) { b = 0; }
-        this.R = r;
-        this.G = g;
-        this.B = b;
-    }
-    ColorSpecification.prototype.ToObject = function () {
-        var output = {
-            R: this.R,
-            G: this.G,
-            B: this.B,
-        };
-        return output;
-    };
-    ColorSpecification.prototype.FromObject = function (obj) {
-        this.R = obj.R;
-        this.G = obj.G;
-        this.B = obj.B;
-    };
-    ColorSpecification.prototype.Clone = function () {
-        var output = new ColorSpecification(this.R, this.G, this.B);
-        return output;
-    };
-    ColorSpecification.prototype.Copy = function (other) {
-        this.R = other.R;
-        this.G = other.G;
-        this.B = other.B;
-    };
-    return ColorSpecification;
-}());
-exports.ColorSpecification = ColorSpecification;
 
 
 /***/ }),
@@ -52886,30 +52884,137 @@ exports.ColorSpecification = ColorSpecification;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var VisualSpecification_1 = __webpack_require__(/*! ./VisualSpecification */ "./src/ts/Annotations/VisualSpecification.js");
-var StorageVector3_1 = __webpack_require__(/*! ../Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var Category_1 = __webpack_require__(/*! ./Category */ "./src/ts/Annotations/Category.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var Vector3My_1 = __webpack_require__(/*! ../Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
+var VisualSpecification_1 = __webpack_require__(/*! ../Classes/VisualSpecification */ "./src/ts/Classes/VisualSpecification.js");
 var PointAnnotation = /** @class */ (function () {
-    function PointAnnotation(id, name, description, useCategory, categoryID, visuals, standardLocation) {
+    function PointAnnotation(id, name, description, category, visuals, standardLocation) {
         if (description === void 0) { description = ""; }
-        if (useCategory === void 0) { useCategory = false; }
-        if (categoryID === void 0) { categoryID = -1; }
+        if (category === void 0) { category = null; }
         if (visuals === void 0) { visuals = new VisualSpecification_1.VisualSpecification(); }
-        if (standardLocation === void 0) { standardLocation = new StorageVector3_1.StorageVector3(); }
+        if (standardLocation === void 0) { standardLocation = new Vector3My_1.Vector3My(); }
+        var _this = this;
+        this.zCategory = null;
+        this.CategoryChangedHandler = function () {
+            _this.OnCategoryChanged();
+        };
+        this.zCategoryChanged = new SimpleEvent_1.SimpleEvent();
+        this.zVisuals = null;
+        this.VisualsChangedHandler = function () {
+            _this.OnVisualsChanged();
+        };
+        this.zVisualsChanged = new SimpleEvent_1.SimpleEvent();
+        this.zStandardLocation = null;
+        this.StandardLocationChangedHandler = function () {
+            _this.OnStandardLocationChanged();
+        };
+        this.zStandardLocationChanged = new SimpleEvent_1.SimpleEvent();
         this.ID = id;
         this.Name = name;
         this.Description = description;
-        this.UseCategory = useCategory;
-        this.CategoryID = categoryID;
+        this.Category = category;
         this.Visuals = visuals;
         this.StandardLocation = standardLocation;
     }
+    Object.defineProperty(PointAnnotation.prototype, "Category", {
+        get: function () {
+            return this.zCategory;
+        },
+        set: function (value) {
+            var _this = this;
+            if (null !== this.zCategory) {
+                this.zCategory.Changed.Unsubscribe(this.CategoryChangedHandler);
+                this.zCategory.Disposed.Unsubscribe(this.CategoryDisposedHandler);
+            }
+            this.zCategory = value;
+            if (null !== this.zCategory) {
+                this.zCategory.Changed.Subscribe(this.CategoryChangedHandler);
+                this.zCategory.Disposed.Subscribe(function () { return _this.CategoryDisposedHandler(); });
+            }
+            this.OnCategoryChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointAnnotation.prototype.CategoryDisposedHandler = function () {
+        this.Category = null;
+    };
+    Object.defineProperty(PointAnnotation.prototype, "CategoryChanged", {
+        get: function () {
+            return this.zCategoryChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointAnnotation.prototype.OnCategoryChanged = function () {
+        this.zCategoryChanged.Dispatch(this.Category);
+    };
+    Object.defineProperty(PointAnnotation.prototype, "Visuals", {
+        get: function () {
+            return this.zVisuals;
+        },
+        set: function (value) {
+            if (null !== this.zVisuals) {
+                this.zVisuals.Changed.Unsubscribe(this.VisualsChangedHandler);
+            }
+            this.zVisuals = value;
+            this.zVisuals.Changed.Subscribe(this.VisualsChangedHandler);
+            this.OnVisualsChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(PointAnnotation.prototype, "VisualsChanged", {
+        get: function () {
+            return this.zVisualsChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointAnnotation.prototype.OnVisualsChanged = function () {
+        this.zVisualsChanged.Dispatch(this.Visuals);
+    };
+    Object.defineProperty(PointAnnotation.prototype, "StandardLocation", {
+        get: function () {
+            return this.zStandardLocation;
+        },
+        set: function (value) {
+            if (null !== this.StandardLocation) {
+                this.zStandardLocation.Changed.Unsubscribe(this.StandardLocationChangedHandler);
+            }
+            this.zStandardLocation = value;
+            this.zStandardLocation.Changed.Subscribe(this.StandardLocationChangedHandler);
+            this.OnStandardLocationChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(PointAnnotation.prototype, "StandardLocationChanged", {
+        get: function () {
+            return this.zStandardLocationChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointAnnotation.prototype.OnStandardLocationChanged = function () {
+        this.zStandardLocationChanged.Dispatch(this.StandardLocation);
+    };
+    PointAnnotation.prototype.Dispose = function () {
+        if (null !== this.Category) {
+            this.Category.Changed.Unsubscribe(this.CategoryChangedHandler);
+        }
+        this.Visuals.Changed.Unsubscribe(this.VisualsChangedHandler);
+        this.StandardLocation.Changed.Unsubscribe(this.StandardLocationChangedHandler);
+    };
     PointAnnotation.prototype.ToObject = function () {
+        var categoryID = null !== this.Category ? this.Category.ID : Category_1.Category.DummyCategoryID;
         var output = {
             ID: this.ID,
             Name: this.Name,
             Description: this.Description,
-            UseCategory: this.UseCategory,
-            CategoryID: this.CategoryID,
+            CategoryID: categoryID,
             Visuals: this.Visuals.ToObject(),
             StandardLocation: this.StandardLocation.ToObject(),
         };
@@ -52919,76 +53024,27 @@ var PointAnnotation = /** @class */ (function () {
         this.ID = obj.ID;
         this.Name = obj.Name;
         this.Description = obj.Description;
-        this.UseCategory = obj.UseCategory;
-        this.CategoryID = obj.CategoryID;
+        if (Category_1.Category.DummyCategoryID !== obj.CategoryID) {
+            this.Category = Application_1.Application.CategoryManager.GetCategoryByID(obj.CategoryID);
+        }
         this.Visuals.FromObject(obj.Visuals);
         this.StandardLocation.FromObject(obj.StandardLocation);
     };
     PointAnnotation.prototype.Clone = function () {
-        var output = new PointAnnotation(this.ID, this.Name, this.Description, this.UseCategory, this.CategoryID, this.Visuals.Clone(), this.StandardLocation.Clone());
+        var output = new PointAnnotation(this.ID, this.Name, this.Description, this.Category, this.Visuals.Clone(), this.StandardLocation.Clone());
         return output;
     };
     PointAnnotation.prototype.Copy = function (other) {
         this.ID = other.ID;
         this.Name = other.Name;
         this.Description = other.Description;
-        this.UseCategory = other.UseCategory;
-        this.CategoryID = other.CategoryID;
+        this.Category = other.Category;
         this.Visuals.Copy(other.Visuals);
         this.StandardLocation.Copy(other.StandardLocation);
     };
     return PointAnnotation;
 }());
 exports.PointAnnotation = PointAnnotation;
-
-
-/***/ }),
-
-/***/ "./src/ts/Annotations/VisualSpecification.js":
-/*!***************************************************!*\
-  !*** ./src/ts/Annotations/VisualSpecification.js ***!
-  \***************************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-var ColorSpecification_1 = __webpack_require__(/*! ./ColorSpecification */ "./src/ts/Annotations/ColorSpecification.js");
-var VisualSpecification = /** @class */ (function () {
-    function VisualSpecification(size, color, transparency) {
-        if (size === void 0) { size = 1; }
-        if (color === void 0) { color = new ColorSpecification_1.ColorSpecification(); }
-        if (transparency === void 0) { transparency = 1; }
-        this.Size = size;
-        this.Color = color;
-        this.Transparency = transparency;
-    }
-    VisualSpecification.prototype.ToObject = function () {
-        var output = {
-            Size: this.Size,
-            Color: this.Color.ToObject(),
-            Transparency: this.Transparency,
-        };
-        return output;
-    };
-    VisualSpecification.prototype.FromObject = function (obj) {
-        this.Size = obj.Size;
-        this.Color.FromObject(obj.Color);
-        this.Transparency = obj.Transparency;
-    };
-    VisualSpecification.prototype.Clone = function () {
-        var output = new VisualSpecification(this.Size, this.Color.Clone(), this.Transparency);
-        return output;
-    };
-    VisualSpecification.prototype.Copy = function (other) {
-        this.Size = other.Size;
-        this.Color.Copy(other.Color);
-        this.Transparency = other.Transparency;
-    };
-    return VisualSpecification;
-}());
-exports.VisualSpecification = VisualSpecification;
 
 
 /***/ }),
@@ -53028,7 +53084,8 @@ var InformationBox_1 = __webpack_require__(/*! ./Common/Boxes/InformationBox */ 
 var IdentifiedManager_1 = __webpack_require__(/*! ./Common/IdentifiedManager */ "./src/ts/Common/IdentifiedManager.js");
 var PointAnnotation_1 = __webpack_require__(/*! ./Annotations/PointAnnotation */ "./src/ts/Annotations/PointAnnotation.js");
 var EventedArray_1 = __webpack_require__(/*! ./Common/EventedArray */ "./src/ts/Common/EventedArray.js");
-var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var Vector3My_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
+var EventTester_1 = __webpack_require__(/*! ./Common/Events/EventTester */ "./src/ts/Common/Events/EventTester.js");
 var Application = /** @class */ (function () {
     function Application() {
     }
@@ -53119,6 +53176,12 @@ var Application = /** @class */ (function () {
                 });
             });
         }
+        var pointAnnotationsPreviouslySet = LocalStorageManager_1.LocalStorageManager.PointAnnotationsExist();
+        if (pointAnnotationsPreviouslySet) {
+            var loaded = LocalStorageManager_1.LocalStorageManager.LoadPointAnnotations();
+            Application.PointAnnotationsManager.Copy(loaded);
+        }
+        // Else do nothing.
         var needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
         if (needsTour) {
             var instructions = Application.GetTourInstructions(tour);
@@ -53234,14 +53297,18 @@ var Application = /** @class */ (function () {
         //     editor.Instance = valueText.value;
         // };
         // editor.Show();
-        Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+        // Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+        var eventTester = new EventTester_1.EventTester();
+        eventTester.OnSignal();
+        eventTester.OnSimple();
+        eventTester.OnEvent();
     };
     Application.AddPoint = function (point) {
         // Add the point annotation.
         var pointAnnotationID = Application.PointAnnotationsManager.GetNextID();
         var standardPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(point, Application.PreferredCoordinateSystem.Value);
-        var standardPositionStorageVector = new StorageVector3_1.StorageVector3(standardPosition.x, standardPosition.y, standardPosition.z);
-        var pointAnnotation = new PointAnnotation_1.PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, undefined, standardPositionStorageVector);
+        var standardPositionStorageVector = new Vector3My_1.Vector3My(standardPosition.x, standardPosition.y, standardPosition.z);
+        var pointAnnotation = new PointAnnotation_1.PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, standardPositionStorageVector);
         Application.PointAnnotationsManager.Add(pointAnnotation);
         // Add the visual point.
         Application.DrawPoint(point);
@@ -53282,6 +53349,7 @@ var Application = /** @class */ (function () {
     Application.CategoryManager = new CategoriesManager_1.CategoriesManager();
     Application.PointAnnotationsManager = new IdentifiedManager_1.IdentifiedManager();
     Application.PointMeshes = new EventedArray_1.EventedArray();
+    Application.PointVisualManagers = new Array();
     Application.MiniatureLoadingProgressHandler = function (ev) {
         LoadingBlocker_1.LoadingBlocker.Message = 'Loading... ' + ((ev.loaded / ev.total) * 100).toFixed(0) + '%';
     };
@@ -53330,7 +53398,7 @@ window.onload = Application.Main;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var Vector3Storage_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
 var CameraSpecification = /** @class */ (function () {
     function CameraSpecification(Position, Rotation, Up, Target) {
         if (Position === void 0) { Position = new three_1.Vector3(); }
@@ -53343,10 +53411,10 @@ var CameraSpecification = /** @class */ (function () {
         this.Target = Target;
     }
     CameraSpecification.prototype.ToObject = function () {
-        var position = StorageVector3_1.StorageVector3.ToObject(this.Position);
-        var rotation = StorageVector3_1.StorageVector3.ToObject(this.Rotation);
-        var up = StorageVector3_1.StorageVector3.ToObject(this.Up);
-        var target = StorageVector3_1.StorageVector3.ToObject(this.Target);
+        var position = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Position);
+        var rotation = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Rotation);
+        var up = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Up);
+        var target = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Target);
         var output = {
             Position: position,
             Rotation: rotation,
@@ -53356,13 +53424,13 @@ var CameraSpecification = /** @class */ (function () {
         return output;
     };
     CameraSpecification.prototype.FromObject = function (obj) {
-        var position = StorageVector3_1.StorageVector3.FromObject(obj.Position);
+        var position = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Position);
         this.Position.copy(position);
-        var rotation = StorageVector3_1.StorageVector3.FromObject(obj.Rotation);
+        var rotation = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Rotation);
         this.Rotation.copy(rotation);
-        var up = StorageVector3_1.StorageVector3.FromObject(obj.Up);
+        var up = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Up);
         this.Up.copy(up);
-        var target = StorageVector3_1.StorageVector3.FromObject(obj.Target);
+        var target = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Target);
         this.Target.copy(target);
     };
     CameraSpecification.prototype.Clone = function () {
@@ -53376,51 +53444,255 @@ exports.CameraSpecification = CameraSpecification;
 
 /***/ }),
 
-/***/ "./src/ts/Classes/StorageVector3.js":
-/*!******************************************!*\
-  !*** ./src/ts/Classes/StorageVector3.js ***!
-  \******************************************/
+/***/ "./src/ts/Classes/Colors/ColorRgb.js":
+/*!*******************************************!*\
+  !*** ./src/ts/Classes/Colors/ColorRgb.js ***!
+  \*******************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-var StorageVector3 = /** @class */ (function () {
-    function StorageVector3(X, Y, Z) {
-        if (X === void 0) { X = 0; }
-        if (Y === void 0) { Y = 0; }
-        if (Z === void 0) { Z = 0; }
-        this.X = X;
-        this.Y = Y;
-        this.Z = Z;
+var SimpleEvent_1 = __webpack_require__(/*! ../../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+/**
+ * An evented model class for colors.
+ *
+ * Changes are only notified at the level of the whole color, not individual color channels. Thus we can only change the whole color, not individual channel values.
+ */
+var ColorRgb = /** @class */ (function () {
+    function ColorRgb(r, g, b) {
+        if (r === void 0) { r = 0; }
+        if (g === void 0) { g = 0; }
+        if (b === void 0) { b = 0; }
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zR = r;
+        this.zG = g;
+        this.zB = b;
     }
-    StorageVector3.ToObject = function (vector) {
+    Object.defineProperty(ColorRgb.prototype, "R", {
+        get: function () {
+            return this.zR;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ColorRgb.prototype, "G", {
+        get: function () {
+            return this.zG;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ColorRgb.prototype, "B", {
+        get: function () {
+            return this.zB;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ColorRgb.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ColorRgb.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    ColorRgb.prototype.Set = function (r, g, b) {
+        this.zR = r;
+        this.zG = g;
+        this.zB = b;
+        this.OnChanged();
+    };
+    ColorRgb.prototype.ToObject = function () {
         var output = {
-            X: vector.x,
-            Y: vector.y,
-            Z: vector.z,
+            R: this.R,
+            G: this.G,
+            B: this.B,
         };
         return output;
     };
-    StorageVector3.FromObject = function (obj) {
-        var output = new three_1.Vector3(obj.X, obj.Y, obj.Z);
-        return output;
+    ColorRgb.prototype.FromObject = function (obj) {
+        this.zR = obj.R;
+        this.zG = obj.G;
+        this.zB = obj.B;
+        this.OnChanged();
     };
-    StorageVector3.ToVector3FromObj = function (obj) {
-        var output = new three_1.Vector3(obj.X, obj.Y, obj.Z);
-        return output;
+    ColorRgb.prototype.Clone = function () {
+        return new ColorRgb(this.R, this.G, this.B);
     };
-    StorageVector3.ToObjFromVector3 = function (vector) {
-        var output = {
-            X: vector.x,
-            Y: vector.y,
-            Z: vector.z,
+    ColorRgb.prototype.Copy = function (other) {
+        this.zR = other.R;
+        this.zG = other.G;
+        this.zB = other.B;
+    };
+    return ColorRgb;
+}());
+exports.ColorRgb = ColorRgb;
+
+
+/***/ }),
+
+/***/ "./src/ts/Classes/PointVisualsManager.js":
+/*!***********************************************!*\
+  !*** ./src/ts/Classes/PointVisualsManager.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var PointVisualsManager = /** @class */ (function () {
+    function PointVisualsManager(pointAnnotation) {
+        var _this = this;
+        this.Visuals = null;
+        this.CategoryChangedHandler = function (category) {
+            _this.SetVisuals();
         };
-        return output;
+        this.StandardLocationChangedHandler = function (standardLocation) {
+            _this.ProcessLocation();
+        };
+        this.VisualsChangedHandler = function (visuals) {
+            _this.ProcessVisuals();
+        };
+        this.zPointAnnotation = pointAnnotation;
+        // Create the visual.
+        this.Geometry = new three_1.SphereGeometry(1);
+        this.Material = new three_1.MeshBasicMaterial({ color: 0x0000ff });
+        this.Material.transparent = true; // This allows the opacity to be controlled.
+        this.Mesh = new three_1.Mesh(this.Geometry, this.Material);
+        Application_1.Application.PointMeshes.Add(this.Mesh);
+        Application_1.Application.Theater.Scene.add(this.Mesh);
+        // Listen for updates to the point annotation.
+        this.zPointAnnotation.CategoryChanged.Subscribe(this.CategoryChangedHandler);
+        this.zPointAnnotation.StandardLocationChanged.Subscribe(this.StandardLocationChangedHandler);
+        this.ProcessLocation();
+        this.SetVisuals();
+        this.ProcessVisuals();
+    }
+    Object.defineProperty(PointVisualsManager.prototype, "PointAnnotation", {
+        get: function () {
+            return this.zPointAnnotation;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointVisualsManager.prototype.Dispose = function () {
+        this.zPointAnnotation.CategoryChanged.Unsubscribe(this.CategoryChangedHandler);
+        this.zPointAnnotation.StandardLocationChanged.Unsubscribe(this.StandardLocationChangedHandler);
+        Application_1.Application.Theater.Scene.remove(this.Mesh);
+        this.Geometry.dispose(); // From: https://github.com/mrdoob/three.js/blob/master/examples/webgl_test_memory.html
+        this.Material.dispose();
     };
-    StorageVector3.prototype.ToObject = function () {
+    PointVisualsManager.prototype.ProcessLocation = function () {
+        // Position the visual mesh.
+        var standardPosition = this.zPointAnnotation.StandardLocation.ToVector3();
+        var preferredPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPosition, Application_1.Application.PreferredCoordinateSystem.Value);
+        this.Mesh.position.copy(preferredPosition);
+    };
+    /**
+     * If the point annotation has a non-null category, use the category's visuals. Else, use the point-annotation's own visuals.
+     */
+    PointVisualsManager.prototype.SetVisuals = function () {
+        if (null !== this.Visuals) {
+            this.Visuals.Changed.Unsubscribe(this.VisualsChangedHandler);
+        }
+        if (null === this.zPointAnnotation.Category) {
+            this.Visuals = this.zPointAnnotation.Visuals;
+        }
+        else {
+            this.Visuals = this.zPointAnnotation.Category.Visuals;
+            this.ProcessVisuals();
+        }
+        this.Visuals.Changed.Subscribe(this.VisualsChangedHandler);
+    };
+    PointVisualsManager.prototype.ProcessVisuals = function () {
+        // Color, size, and transpare the visual mesh.
+        this.Material.color.r = this.Visuals.Color.R;
+        this.Material.color.g = this.Visuals.Color.G;
+        this.Material.color.b = this.Visuals.Color.B;
+        this.Mesh.scale.set(this.Visuals.Size, this.Visuals.Size, this.Visuals.Size);
+        this.Material.opacity = this.Visuals.Transparency;
+    };
+    return PointVisualsManager;
+}());
+exports.PointVisualsManager = PointVisualsManager;
+
+
+/***/ }),
+
+/***/ "./src/ts/Classes/Vectors/Vector3My.js":
+/*!*********************************************!*\
+  !*** ./src/ts/Classes/Vectors/Vector3My.js ***!
+  \*********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SimpleEvent_1 = __webpack_require__(/*! ../../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/**
+ * An evented model class for colors.
+ *
+ * Changes are only notified at the level of the whole color, not individual color channels. Thus we can only change the whole color, not individual channel values.
+ */
+var Vector3My = /** @class */ (function () {
+    function Vector3My(x, y, z) {
+        if (x === void 0) { x = 0; }
+        if (y === void 0) { y = 0; }
+        if (z === void 0) { z = 0; }
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zX = x;
+        this.zY = y;
+        this.zZ = z;
+    }
+    Object.defineProperty(Vector3My.prototype, "X", {
+        get: function () {
+            return this.zX;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector3My.prototype, "Y", {
+        get: function () {
+            return this.zY;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector3My.prototype, "Z", {
+        get: function () {
+            return this.zZ;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector3My.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Vector3My.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    Vector3My.prototype.Set = function (x, y, z) {
+        this.zX = x;
+        this.zY = y;
+        this.zZ = z;
+        this.OnChanged();
+    };
+    Vector3My.prototype.ToObject = function () {
         var output = {
             X: this.X,
             Y: this.Y,
@@ -53428,32 +53700,187 @@ var StorageVector3 = /** @class */ (function () {
         };
         return output;
     };
-    StorageVector3.prototype.FromObject = function (obj) {
-        this.X = obj.X;
-        this.Y = obj.Y;
-        this.Z = obj.Z;
+    Vector3My.prototype.FromObject = function (obj) {
+        this.zX = obj.X;
+        this.zY = obj.Y;
+        this.zZ = obj.Z;
+        this.OnChanged();
     };
-    StorageVector3.prototype.ToVector3 = function () {
+    Vector3My.prototype.Clone = function () {
+        return new Vector3My(this.X, this.Y, this.Z);
+    };
+    Vector3My.prototype.Copy = function (other) {
+        this.zX = other.X;
+        this.zY = other.Y;
+        this.zZ = other.Z;
+        this.OnChanged();
+    };
+    Vector3My.prototype.ToVector3 = function () {
         var output = new three_1.Vector3(this.X, this.Y, this.Z);
         return output;
     };
-    StorageVector3.prototype.FromVector3 = function (vector) {
-        this.X = vector.x;
-        this.Y = vector.y;
-        this.Z = vector.z;
+    Vector3My.prototype.FromVector3 = function (vector) {
+        this.zX = vector.x;
+        this.zY = vector.y;
+        this.zZ = vector.z;
+        this.OnChanged();
     };
-    StorageVector3.prototype.Clone = function () {
-        var output = new StorageVector3(this.X, this.Y, this.Z);
+    Vector3My.prototype.ToString = function () {
+        var output = "[X: " + this.X.toFixed(2) + ", Y: " + this.Y.toFixed(2) + ", Z: " + this.Z.toFixed(2) + "]";
         return output;
     };
-    StorageVector3.prototype.Copy = function (other) {
-        this.X = other.X;
-        this.Y = other.Y;
-        this.Z = other.Z;
-    };
-    return StorageVector3;
+    return Vector3My;
 }());
-exports.StorageVector3 = StorageVector3;
+exports.Vector3My = Vector3My;
+
+
+/***/ }),
+
+/***/ "./src/ts/Classes/Vectors/Vector3Storage.js":
+/*!**************************************************!*\
+  !*** ./src/ts/Classes/Vectors/Vector3Storage.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var Vector3Storage = /** @class */ (function () {
+    function Vector3Storage() {
+    }
+    Vector3Storage.ToVector3FromObj = function (obj) {
+        var output = new three_1.Vector3(obj.X, obj.Y, obj.Z);
+        return output;
+    };
+    Vector3Storage.ToObjFromVector3 = function (vector) {
+        var output = {
+            X: vector.x,
+            Y: vector.y,
+            Z: vector.z,
+        };
+        return output;
+    };
+    return Vector3Storage;
+}());
+exports.Vector3Storage = Vector3Storage;
+
+
+/***/ }),
+
+/***/ "./src/ts/Classes/VisualSpecification.js":
+/*!***********************************************!*\
+  !*** ./src/ts/Classes/VisualSpecification.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ColorRgb_1 = __webpack_require__(/*! ./Colors/ColorRgb */ "./src/ts/Classes/Colors/ColorRgb.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+/**
+ * An evented model class representing visual information.
+ */
+var VisualSpecification = /** @class */ (function () {
+    function VisualSpecification(size, color, transparency) {
+        if (size === void 0) { size = 1; }
+        if (color === void 0) { color = new ColorRgb_1.ColorRgb(); }
+        if (transparency === void 0) { transparency = 1; }
+        var _this = this;
+        this.zColor = null;
+        this.ColorChangedHandler = function () {
+            _this.OnChanged();
+        };
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zSize = size;
+        this.zColor = color;
+        this.zTransparency = transparency;
+    }
+    Object.defineProperty(VisualSpecification.prototype, "Size", {
+        /**
+         * A scale factor to apply to the specific object's size.
+         */
+        get: function () {
+            return this.zSize;
+        },
+        set: function (value) {
+            this.zSize = value;
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(VisualSpecification.prototype, "Color", {
+        get: function () {
+            return this.zColor;
+        },
+        set: function (value) {
+            if (null !== this.zColor) {
+                this.zColor.Changed.Unsubscribe(this.ColorChangedHandler);
+            }
+            this.zColor = value;
+            this.zColor.Changed.Subscribe(this.ColorChangedHandler);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(VisualSpecification.prototype, "Transparency", {
+        /**
+         * A value from 0 to 1.
+         */
+        get: function () {
+            return this.zTransparency;
+        },
+        set: function (value) {
+            this.zTransparency = value;
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(VisualSpecification.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    VisualSpecification.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    VisualSpecification.prototype.Dispose = function () {
+        this.Color.Changed.Unsubscribe(this.ColorChangedHandler);
+    };
+    VisualSpecification.prototype.ToObject = function () {
+        var output = {
+            Size: this.Size,
+            Color: this.Color.ToObject(),
+            Transparency: this.Transparency,
+        };
+        return output;
+    };
+    VisualSpecification.prototype.FromObject = function (obj) {
+        this.zSize = obj.Size;
+        this.zColor.FromObject(obj.Color);
+        this.zTransparency = obj.Transparency;
+        this.OnChanged();
+    };
+    VisualSpecification.prototype.Clone = function () {
+        var output = new VisualSpecification(this.Size, this.Color.Clone(), this.Transparency);
+        return output;
+    };
+    VisualSpecification.prototype.Copy = function (other) {
+        this.zSize = other.Size;
+        this.zColor.Copy(other.Color);
+        this.zTransparency = other.Transparency;
+        this.OnChanged();
+    };
+    return VisualSpecification;
+}());
+exports.VisualSpecification = VisualSpecification;
 
 
 /***/ }),
@@ -53836,6 +54263,13 @@ var EventedArray = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(EventedArray.prototype, "Length", {
+        get: function () {
+            return this.zValues.length;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(EventedArray.prototype, "Changed", {
         get: function () {
             return this.zChanged.AsEvent();
@@ -53935,6 +54369,80 @@ var Event = /** @class */ (function (_super) {
     return Event;
 }(Events_1.DispatcherBase));
 exports.Event = Event;
+
+
+/***/ }),
+
+/***/ "./src/ts/Common/Events/EventTester.js":
+/*!*********************************************!*\
+  !*** ./src/ts/Common/Events/EventTester.js ***!
+  \*********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ./SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var SimpleEvent_1 = __webpack_require__(/*! ./SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var Event_1 = __webpack_require__(/*! ./Event */ "./src/ts/Common/Events/Event.js");
+var EventTester = /** @class */ (function () {
+    function EventTester() {
+        var _this = this;
+        this.zSignal = new SignalEvent_1.SignalEvent();
+        this.zSimple = new SimpleEvent_1.SimpleEvent();
+        this.zEvent = new Event_1.Event();
+        this.SignalHandler = function () {
+            console.log('Signal + ' + _this.Value);
+        };
+        this.SimpleHandler = function () {
+            console.log('Simple + ' + _this.Value);
+        };
+        this.SimpleHandler2 = function (result) {
+            console.log('Simple2 + ' + result + ' + ' + _this.Value);
+        };
+        this.EventHandler = function () {
+            console.log('Event + ' + _this.Value);
+        };
+        this.Value = 'The Value';
+        this.Signal.Subscribe(this.SignalHandler);
+        this.Simple.Subscribe(this.SimpleHandler);
+        this.Simple.SubscribeOnce(this.SimpleHandler2);
+        this.Event.Subscribe(this.EventHandler);
+    }
+    Object.defineProperty(EventTester.prototype, "Signal", {
+        get: function () {
+            return this.zSignal.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    EventTester.prototype.OnSignal = function () {
+        this.zSignal.Dispatch();
+    };
+    Object.defineProperty(EventTester.prototype, "Simple", {
+        get: function () {
+            return this.zSimple.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    EventTester.prototype.OnSimple = function () {
+        this.zSimple.Dispatch('Hello world!');
+    };
+    Object.defineProperty(EventTester.prototype, "Event", {
+        get: function () {
+            return this.zEvent.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    EventTester.prototype.OnEvent = function () {
+        this.zEvent.Dispatch(this, 'Hello again world!');
+    };
+    return EventTester;
+}());
+exports.EventTester = EventTester;
 
 
 /***/ }),
@@ -54753,7 +55261,9 @@ var CameraTransformControl = /** @class */ (function () {
             var target = new three_1.Vector3();
             target.copy(Application_1.Application.Theater.Camera.position);
             target.add(cameraDirection);
+            var value = Application_1.Application.PreferredCameraSpecification.Value;
             Application_1.Application.PreferredCameraSpecification.Value.Target.copy(target);
+            Application_1.Application.PreferredCameraSpecification;
             LocalStorageManager_1.LocalStorageManager.SavePreferredCameraSpecification(Application_1.Application.PreferredCameraSpecification.Value);
             _this.Dispose();
         };
@@ -55508,7 +56018,7 @@ exports.WebGLDetectorControl = WebGLDetectorControl;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
-var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
+var Vector3Storage_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
 var CoordinateSystemConversion = /** @class */ (function () {
     function CoordinateSystemConversion(Translation, Rotation, Scale) {
         if (Translation === void 0) { Translation = new three_1.Vector3(); }
@@ -55571,8 +56081,8 @@ var CoordinateSystemConversion = /** @class */ (function () {
     };
     // Returns a JS object with no frills that can be easily JSON-stringified.
     CoordinateSystemConversion.prototype.ToObject = function () {
-        var translation = StorageVector3_1.StorageVector3.ToObject(this.Translation);
-        var rotation = StorageVector3_1.StorageVector3.ToObject(this.Rotation);
+        var translation = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Translation);
+        var rotation = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.Rotation);
         var output = {
             Translation: translation,
             Rotation: rotation,
@@ -55582,9 +56092,9 @@ var CoordinateSystemConversion = /** @class */ (function () {
     };
     // Parses a JS object with no frills that may have come from JSON-parsing.
     CoordinateSystemConversion.prototype.FromObject = function (object) {
-        var translation = StorageVector3_1.StorageVector3.FromObject(object.Translation);
+        var translation = Vector3Storage_1.Vector3Storage.ToVector3FromObj(object.Translation);
         this.Translation.copy(translation);
-        var rotation = StorageVector3_1.StorageVector3.FromObject(object.Rotation);
+        var rotation = Vector3Storage_1.Vector3Storage.ToVector3FromObj(object.Rotation);
         this.Rotation.copy(rotation);
         this.Scale = object.Scale;
     };
@@ -55675,8 +56185,8 @@ exports.Lighting = Lighting;
 Object.defineProperty(exports, "__esModule", { value: true });
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var SignalEvent_1 = __webpack_require__(/*! ./Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
-var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var Vector3Storage_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
 var LightingSpecification = /** @class */ (function () {
     function LightingSpecification() {
         this.zChanged = new SignalEvent_1.SignalEvent();
@@ -55722,8 +56232,8 @@ var LightingSpecification = /** @class */ (function () {
         this.PointLocation.copy(other.PointLocation);
     };
     LightingSpecification.prototype.ToObject = function () {
-        var directionalDirection = StorageVector3_1.StorageVector3.ToObjFromVector3(this.DirectionalPosition);
-        var pointLocation = StorageVector3_1.StorageVector3.ToObjFromVector3(this.PointLocation);
+        var directionalDirection = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.DirectionalPosition);
+        var pointLocation = Vector3Storage_1.Vector3Storage.ToObjFromVector3(this.PointLocation);
         var output = {
             AmbientOn: this.AmbientOn,
             AmbientIntensity: this.AmbientIntensity,
@@ -55828,11 +56338,11 @@ exports.LoadingBlocker = LoadingBlocker;
 Object.defineProperty(exports, "__esModule", { value: true });
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ./CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
 var CameraSpecification_1 = __webpack_require__(/*! ./CameraSpecification */ "./src/ts/CameraSpecification.js");
-var StorageVector3_1 = __webpack_require__(/*! ./Classes/StorageVector3 */ "./src/ts/Classes/StorageVector3.js");
 var LightingSpecification_1 = __webpack_require__(/*! ./LightingSpecification */ "./src/ts/LightingSpecification.js");
 var CategoriesManager_1 = __webpack_require__(/*! ./Annotations/CategoriesManager */ "./src/ts/Annotations/CategoriesManager.js");
 var IdentifiedManager_1 = __webpack_require__(/*! ./Common/IdentifiedManager */ "./src/ts/Common/IdentifiedManager.js");
 var PointAnnotation_1 = __webpack_require__(/*! ./Annotations/PointAnnotation */ "./src/ts/Annotations/PointAnnotation.js");
+var Vector3Storage_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
 var LocalStorageManager = /** @class */ (function () {
     function LocalStorageManager() {
     }
@@ -55914,11 +56424,11 @@ var LocalStorageManager = /** @class */ (function () {
         }
         var json = localStorage.getItem(LocalStorageManager.PointLocationName);
         var obj = JSON.parse(json);
-        var output = StorageVector3_1.StorageVector3.ToVector3FromObj(obj);
+        var output = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj);
         return output;
     };
     LocalStorageManager.SavePointLocation = function (point) {
-        var obj = StorageVector3_1.StorageVector3.ToObjFromVector3(point);
+        var obj = Vector3Storage_1.Vector3Storage.ToObjFromVector3(point);
         var json = JSON.stringify(obj);
         localStorage.setItem(LocalStorageManager.PointLocationName, json);
     };
@@ -56266,6 +56776,7 @@ var CategoryManagementMode = /** @class */ (function () {
             var category = _this.CategoriesManager.GetCategoryByIDString(option.value);
             var index = _this.CategoriesManager.Categories.indexOf(category);
             _this.CategoriesManager.Categories.splice(index, 1);
+            category.Dispose();
             _this.FillSelectCategories();
         };
         this.EditClick = function () {
@@ -56314,16 +56825,13 @@ var CategoryManagementMode = /** @class */ (function () {
             guiPositioner.style.left = '0px';
             _this.CategoryVisualsGUI = new dat.GUI({ autoPlace: false });
             guiPositioner.appendChild(_this.CategoryVisualsGUI.domElement);
-            var r = Math.round(editor.Instance.Visuals.Color.R);
-            var g = Math.round(editor.Instance.Visuals.Color.G);
-            var b = Math.round(editor.Instance.Visuals.Color.B);
+            var r = editor.Instance.Visuals.Color.R * 255;
+            var g = editor.Instance.Visuals.Color.G * 255;
+            var b = editor.Instance.Visuals.Color.B * 255;
             var tempObj = { ColorValue: [r, g, b], };
             var color = _this.CategoryVisualsGUI.addColor(tempObj, 'ColorValue');
             color.onChange(function () {
-                editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-                editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-                editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-                console.log(editor.Instance.Visuals.Color);
+                editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
             });
             var size = _this.CategoryVisualsGUI.add(editor.Instance.Visuals, 'Size');
             var transparency = _this.CategoryVisualsGUI.add(editor.Instance.Visuals, 'Transparency', 0, 1);
@@ -56656,35 +57164,17 @@ var EditorBox_1 = __webpack_require__(/*! ../Common/Boxes/EditorBox */ "./src/ts
 var template = __webpack_require__(/*! ./PointAnnotationMode.html */ "./src/ts/Modes/PointAnnotationMode.html");
 __webpack_require__(/*! ./PointAnnotationMode.css */ "./src/ts/Modes/PointAnnotationMode.css");
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
-var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var Vector3My_1 = __webpack_require__(/*! ../Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
+var PointVisualsManager_1 = __webpack_require__(/*! ../Classes/PointVisualsManager */ "./src/ts/Classes/PointVisualsManager.js");
 var PointAnnotationMode = /** @class */ (function () {
     function PointAnnotationMode(controlPanel) {
         var _this = this;
         this.zDisposed = new SignalEvent_1.SignalEvent();
         this.Annotations = Application_1.Application.PointAnnotationsManager;
-        this.AnnotationsChanged = function (changed) {
-            switch (changed.Type) {
-                case 'Added':
-                    _this.FillSelect();
-                    break;
-                case 'Inserted':
-                    _this.FillSelect();
-                    break;
-                case 'Removed':
-                    _this.FillSelect();
-                    break;
-                case 'Reset':
-                    _this.FillSelect();
-                    break;
-                default:
-                    // Do nothing.
-                    break;
-            }
-        };
+        this.AnnotationVisuals = new Array();
         this.LoadClick = function () {
             var loaded = LocalStorageManager_1.LocalStorageManager.LoadPointAnnotations();
             _this.Annotations.Copy(loaded);
-            PointAnnotationMode.DrawAllPoints();
             _this.FillSelect();
         };
         this.SaveClick = function () {
@@ -56703,12 +57193,11 @@ var PointAnnotationMode = /** @class */ (function () {
             _this.FillSelect();
         };
         this.OnWebGlOutputMouseDown = function (ev) {
-            console.log(_this);
         };
         this.EditClick = function () {
             var option = _this.Select.children[_this.Select.selectedIndex];
-            var category = _this.Annotations.GetByIDString(option.value);
-            var instanceForEdit = category.Clone();
+            var annotation = _this.Annotations.GetByIDString(option.value);
+            var instanceForEdit = annotation.Clone();
             var editor = new EditorBox_1.EditorBox(instanceForEdit, 'Edit Point Annotation');
             _this.Editor = editor;
             editor.Closed.SubscribeOnce(_this.EditorClosed);
@@ -56727,22 +57216,6 @@ var PointAnnotationMode = /** @class */ (function () {
             _this.EditorModelLocationHtmlElement = document.getElementById(PointAnnotationMode.EditorModelLocationHtmlElementID);
             _this.EditorStandardLocationHtmlElement = document.getElementById(PointAnnotationMode.EditorStandardLocationHtmlElementID);
             _this.EditorPointIDHtmlElement = document.getElementById(PointAnnotationMode.EditorPointIDHtmlElementID);
-            _this.EditorUseCategoryHtmlElement.onchange = function () {
-                if (_this.EditorUseCategoryHtmlElement.checked) {
-                    _this.EditorCategoryHtmlElement.disabled = false;
-                    _this.EditorColorHtmlElement.style.pointerEvents = 'none';
-                    _this.EditorColorHtmlElement.style.opacity = '0.5';
-                    _this.EditorSizeHtmlElement.disabled = true;
-                    _this.EditorTransparencyHtmlElement.disabled = true;
-                }
-                else {
-                    _this.EditorCategoryHtmlElement.disabled = true;
-                    _this.EditorColorHtmlElement.style.pointerEvents = 'auto';
-                    _this.EditorColorHtmlElement.style.opacity = '1';
-                    _this.EditorSizeHtmlElement.disabled = false;
-                    _this.EditorTransparencyHtmlElement.disabled = false;
-                }
-            };
             // Start off with the category disabled.
             _this.EditorCategoryHtmlElement.disabled = true;
             // All the categories into the select.
@@ -56753,122 +57226,79 @@ var PointAnnotationMode = /** @class */ (function () {
                 option.innerHTML = category.Name;
                 _this.EditorCategoryHtmlElement.appendChild(option);
             }, _this);
+            // If the point annotation has a category, determine its index, and set the selected index. Note: makes use of the same ordering as categories were added above.
+            if (null !== instanceForEdit.Category) {
+                for (var iCategory = 0; iCategory < categories.length; iCategory++) {
+                    var category = categories[iCategory];
+                    if (category === instanceForEdit.Category) {
+                        _this.EditorCategoryHtmlElement.selectedIndex = iCategory;
+                        break;
+                    }
+                }
+            }
             // The visuals color picker.
             _this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
             _this.EditorColorHtmlElement.appendChild(_this.EditorVisualsDatGUI.domElement);
-            var r = Math.round(editor.Instance.Visuals.Color.R);
-            var g = Math.round(editor.Instance.Visuals.Color.G);
-            var b = Math.round(editor.Instance.Visuals.Color.B);
+            var r = editor.Instance.Visuals.Color.R * 255;
+            var g = editor.Instance.Visuals.Color.G * 255;
+            var b = editor.Instance.Visuals.Color.B * 255;
             var tempObj = { ColorValue: [r, g, b], };
             var color = _this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
             color.onChange(function () {
-                editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-                editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-                editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-                console.log(editor.Instance.Visuals.Color);
+                editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
             });
-            // let nameLabel = document.createElement('label');
-            // body.appendChild(nameLabel);
-            // nameLabel.innerHTML = 'Name:';
-            // let br = document.createElement('br');
-            // body.appendChild(br);
-            // let name = document.createElement('input');
-            // body.appendChild(name);
-            // name.type = 'text';
-            // name.name = 'name';
-            // name.placeholder = 'Name...';
-            // name.value = editor.Instance.Name;
-            // name.onchange = () => {
-            //     this.Editor.Instance.Name = name.value;
-            // }
-            // name.style.width = '100%';
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let descriptionLabel = document.createElement('label');
-            // body.appendChild(descriptionLabel);
-            // descriptionLabel.innerHTML = 'Description:'
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let description = document.createElement('textarea');
-            // body.appendChild(description);
-            // description.name = 'description';
-            // description.placeholder = 'Description...';
-            // description.value = editor.Instance.Description;
-            // description.onchange = () => {
-            //     this.Editor.Instance.Description = description.value;
-            // };
-            // description.style.width = '100%'
-            // let useCategoryLabel = document.createElement('label');
-            // body.appendChild(useCategoryLabel);
-            // useCategoryLabel.innerHTML = 'Use Category:';
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let useCategory = document.createElement('input');
-            // body.appendChild(useCategory);
-            // useCategory.type = 'checkbox';
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let categoryIDLabel = document.createElement('label');
-            // body.appendChild(categoryIDLabel);
-            // categoryIDLabel.innerHTML = 'Category ID:';
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let categoryID = document.createElement('input');
-            // body.appendChild(categoryID);
-            // categoryID.type = 'text';
-            // categoryID.placeholder = 'Integer ID...'
-            // categoryID.pattern = '\d+';
-            // categoryID.oninvalid = () => {
-            //     console.log('invalid');
-            // }
-            // br = document.createElement('br');
-            // body.appendChild(br);
-            // let visualPropertiesLabel = document.createElement('label');
-            // body.appendChild(visualPropertiesLabel);
-            // visualPropertiesLabel.innerHTML = 'Visual Properties:'
-            // let guiPositioner = document.createElement('div');
-            // body.appendChild(guiPositioner);
-            // guiPositioner.style.paddingBottom = '25px';
-            // guiPositioner.style.left = '0px';
-            // guiPositioner.style.pointerEvents = 'none';
-            // guiPositioner.style.opacity = '0.5';
-            // this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
-            // guiPositioner.appendChild(this.EditorVisualsDatGUI.domElement);
-            // let r = Math.round(editor.Instance.Visuals.Color.R);
-            // let g = Math.round(editor.Instance.Visuals.Color.G);
-            // let b = Math.round(editor.Instance.Visuals.Color.B);
-            // let tempObj = { ColorValue: [r, g, b], };
-            // let color = this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
-            // color.onChange(() => {
-            //     editor.Instance.Visuals.Color.R = tempObj.ColorValue[0];
-            //     editor.Instance.Visuals.Color.G = tempObj.ColorValue[1];
-            //     editor.Instance.Visuals.Color.B = tempObj.ColorValue[2];
-            //     console.log(editor.Instance.Visuals.Color);
-            // });
-            // let size = this.EditorVisualsDatGUI.add(editor.Instance.Visuals, 'Size');
-            // let transparency = this.EditorVisualsDatGUI.add(editor.Instance.Visuals, 'Transparency', 0, 1);
-            // // Events.
-            // useCategory.onchange = () => {
-            //     if(useCategory.checked) {
-            //         // categoryID.style.pointerEvents = 'auto';
-            //         // categoryID.style.opacity = '1';
-            //         categoryID.disabled = false;
-            //         guiPositioner.style.pointerEvents = 'auto';
-            //         guiPositioner.style.opacity = '1';
-            //     } else {
-            //         // categoryID.style.pointerEvents = 'none';
-            //         // categoryID.style.opacity = '0.5';
-            //         categoryID.disabled = true;
-            //         guiPositioner.style.pointerEvents = 'none';
-            //         guiPositioner.style.opacity = '0.5';
-            //     }
-            // }
+            // Set form values.
+            _this.EditorNameHtmlElement.value = instanceForEdit.Name;
+            _this.EditorDescriptionHtmlElement.value = instanceForEdit.Description;
+            var useCategory = null !== instanceForEdit.Category;
+            _this.EditorUseCategoryHtmlElement.checked = useCategory;
+            if (useCategory) {
+                _this.SetUseCategoryVisuals();
+            }
+            else {
+                _this.SetUseAnnotationVisuals();
+            }
+            _this.EditorSizeHtmlElement.value = instanceForEdit.Visuals.Size.toString();
+            _this.EditorTransparencyHtmlElement.value = instanceForEdit.Visuals.Transparency.toString();
+            _this.EditorStandardLocationHtmlElement.innerHTML = instanceForEdit.StandardLocation.ToString();
+            var standardLocation = instanceForEdit.StandardLocation.ToVector3();
+            var preferredLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardLocation, Application_1.Application.PreferredCoordinateSystem.Value);
+            var pref = new Vector3My_1.Vector3My();
+            pref.FromVector3(preferredLocation);
+            _this.EditorModelLocationHtmlElement.innerHTML = pref.ToString();
+            _this.EditorPointIDHtmlElement.innerHTML = instanceForEdit.ID.toString();
+            // Update temporary instance in response to form changes.
+            _this.EditorNameHtmlElement.onchange = function () {
+                _this.Editor.Instance.Name = _this.EditorNameHtmlElement.value;
+            };
+            _this.EditorDescriptionHtmlElement.onchange = function () {
+                _this.Editor.Instance.Description = _this.EditorDescriptionHtmlElement.value;
+            };
+            _this.EditorUseCategoryHtmlElement.onchange = function () {
+                if (_this.EditorUseCategoryHtmlElement.checked) {
+                    _this.SetUseCategoryVisuals();
+                    _this.Editor.Instance.Category = _this.GetCategory(); // Set the category initially.
+                }
+                else {
+                    _this.SetUseAnnotationVisuals();
+                    _this.Editor.Instance.Category = null;
+                }
+            };
+            _this.EditorCategoryHtmlElement.onchange = function () {
+                _this.Editor.Instance.Category = _this.GetCategory();
+            };
+            _this.EditorSizeHtmlElement.onchange = function () {
+                _this.Editor.Instance.Visuals.Size = parseFloat(_this.EditorSizeHtmlElement.value);
+            };
+            _this.EditorTransparencyHtmlElement.onchange = function () {
+                _this.Editor.Instance.Visuals.Transparency = parseFloat(_this.EditorTransparencyHtmlElement.value);
+            };
             editor.Show();
         };
         this.EditorClosed = function (result) {
             if (result.Action === 'Accept') {
-                var category = _this.Annotations.GetByID(result.Instance.ID);
-                category.Copy(result.Instance);
+                var annotation = _this.Annotations.GetByID(result.Instance.ID);
+                annotation.Copy(result.Instance);
             }
             _this.EditorVisualsDatGUI.destroy();
             _this.FillSelect();
@@ -56879,6 +57309,7 @@ var PointAnnotationMode = /** @class */ (function () {
             _this.Annotations.Remove(annotation);
             _this.FillSelect();
         };
+        // Setup controls.
         this.PluralHtmlElement = controlPanel.CreateChildControlElement(PointAnnotationMode.PluralHtmlElementID);
         controlPanel.CreateChildControlTitle(this.PluralHtmlElement, 'Point Annotations');
         this.LoadButton = new ButtonControl_1.ButtonControl(this.PluralHtmlElement, 'Load');
@@ -56892,21 +57323,17 @@ var PointAnnotationMode = /** @class */ (function () {
         this.Select = document.createElement('select');
         this.SingularHtmlElement.appendChild(this.Select);
         this.FillSelect();
-        this.Annotations.Changed.Subscribe(this.AnnotationsChanged);
         this.AddButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Add');
         this.AddButton.Click.Subscribe(this.AddClick);
         this.EditButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Edit');
         this.EditButton.Click.Subscribe(this.EditClick);
         this.RemoveButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Remove');
         this.RemoveButton.Click.Subscribe(this.RemoveClick);
+        // Connect to events of the annotation array.
+        this.Annotations.Changed.Subscribe(function (changed) { return _this.AnnotationsChanged(changed); });
+        // Place the initial annotations.
+        this.ResetAnnotations();
     }
-    PointAnnotationMode.DrawAllPoints = function () {
-        Application_1.Application.PointAnnotationsManager.Values.forEach(function (pointAnnotation) {
-            var standardPoint = new three_1.Vector3(pointAnnotation.StandardLocation.X, pointAnnotation.StandardLocation.Y, pointAnnotation.StandardLocation.Z);
-            var preferredPoint = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPoint, Application_1.Application.PreferredCoordinateSystem.Value);
-            Application_1.Application.DrawPoint(preferredPoint);
-        });
-    };
     Object.defineProperty(PointAnnotationMode.prototype, "ID", {
         get: function () {
             return PointAnnotationMode.ID;
@@ -56938,10 +57365,87 @@ var PointAnnotationMode = /** @class */ (function () {
     PointAnnotationMode.prototype.DisconnectEvents = function () {
         this.Annotations.Changed.Unsubscribe(this.AnnotationsChanged);
     };
+    PointAnnotationMode.prototype.AnnotationsChanged = function (changed) {
+        switch (changed.Type) {
+            case 'Added':
+                this.AddAnnotation(changed.Value);
+                break;
+            case 'Inserted':
+                this.AddAnnotation(changed.Value);
+                break;
+            case 'Removed':
+                this.RemoveAnnotation(changed.Value);
+                break;
+            case 'Reset':
+                this.ResetAnnotations();
+                break;
+            default:
+                // Do nothing.
+                break;
+        }
+        // Update the select.
+        this.FillSelect();
+    };
+    PointAnnotationMode.prototype.AddAnnotation = function (annotation) {
+        var annotationVisual = new PointVisualsManager_1.PointVisualsManager(annotation);
+        this.AnnotationVisuals.push(annotationVisual);
+    };
+    PointAnnotationMode.prototype.RemoveAnnotation = function (annotation) {
+        for (var iIndex = 0; iIndex < this.AnnotationVisuals.length; iIndex++) {
+            var visual = this.AnnotationVisuals[iIndex];
+            if (visual.PointAnnotation === annotation) {
+                this.AnnotationVisuals.splice(iIndex, 1);
+                visual.Dispose();
+            }
+        }
+    };
+    PointAnnotationMode.prototype.ResetAnnotations = function () {
+        // Remove all.
+        for (var iIndex = 0; iIndex < this.AnnotationVisuals.length; iIndex++) {
+            var visual = this.AnnotationVisuals[iIndex];
+            visual.Dispose();
+        }
+        this.AnnotationVisuals.splice(0);
+        // Add for each annotation.
+        var values = this.Annotations.Values;
+        for (var iAnnotation = 0; iAnnotation < values.length; iAnnotation++) {
+            var annotation = values[iAnnotation];
+            this.AddAnnotation(annotation);
+        }
+    };
+    PointAnnotationMode.prototype.GetCategory = function () {
+        if (0 < this.EditorCategoryHtmlElement.childNodes.length) {
+            var option = this.EditorCategoryHtmlElement.childNodes[this.EditorCategoryHtmlElement.selectedIndex];
+            var IDStr = option.value;
+            var category = Application_1.Application.CategoryManager.GetCategoryByIDString(IDStr);
+            return category;
+        }
+        else {
+            return null;
+        }
+    };
+    PointAnnotationMode.prototype.SetUseCategoryVisuals = function () {
+        this.EditorCategoryHtmlElement.disabled = false;
+        this.EditorColorHtmlElement.style.pointerEvents = 'none';
+        this.EditorColorHtmlElement.style.opacity = '0.5';
+        this.EditorSizeHtmlElement.disabled = true;
+        this.EditorTransparencyHtmlElement.disabled = true;
+    };
+    PointAnnotationMode.prototype.SetUseAnnotationVisuals = function () {
+        this.EditorCategoryHtmlElement.disabled = true;
+        this.EditorColorHtmlElement.style.pointerEvents = 'auto';
+        this.EditorColorHtmlElement.style.opacity = '1';
+        this.EditorSizeHtmlElement.disabled = false;
+        this.EditorTransparencyHtmlElement.disabled = false;
+    };
     PointAnnotationMode.prototype.Dispose = function () {
         this.DisconnectEvents();
         this.SingularHtmlElement.remove();
         this.PluralHtmlElement.remove();
+        this.AnnotationVisuals.forEach(function (visual) {
+            visual.Dispose();
+        });
+        this.AnnotationVisuals.splice(0);
         this.zDisposed.Dispatch();
     };
     PointAnnotationMode.ID = 'pointAnnotation';

@@ -1,8 +1,8 @@
 import { Matrix4, Euler, Vector3, Matrix } from "three";
 
-import { IVector3 } from "./Common";
 import { LocalStorageManager } from "./LocalStorageManager";
-import { StorageVector3 } from "./Classes/StorageVector3";
+import { IVector3 } from "./Classes/Vectors/IVector3";
+import { Vector3Storage } from "./Classes/Vectors/Vector3Storage";
 
 
 export interface ICoordinateSystemConversion {
@@ -95,8 +95,8 @@ export class CoordinateSystemConversion {
 
     // Returns a JS object with no frills that can be easily JSON-stringified.
     public ToObject(): ICoordinateSystemConversion {
-        let translation: IVector3 = StorageVector3.ToObject(this.Translation);
-        let rotation: IVector3 = StorageVector3.ToObject(this.Rotation);
+        let translation: IVector3 = Vector3Storage.ToObjFromVector3(this.Translation);
+        let rotation: IVector3 = Vector3Storage.ToObjFromVector3(this.Rotation);
 
         let output = {
             Translation: translation,
@@ -108,10 +108,10 @@ export class CoordinateSystemConversion {
 
     // Parses a JS object with no frills that may have come from JSON-parsing.
     public FromObject(object: ICoordinateSystemConversion) {
-        let translation = StorageVector3.FromObject(object.Translation);
+        let translation = Vector3Storage.ToVector3FromObj(object.Translation);
         this.Translation.copy(translation);
 
-        let rotation = StorageVector3.FromObject(object.Rotation);
+        let rotation = Vector3Storage.ToVector3FromObj(object.Rotation);
         this.Rotation.copy(rotation);
 
         this.Scale = object.Scale;

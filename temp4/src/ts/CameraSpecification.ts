@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
-import { IVector3 } from "./Common";
-import { StorageVector3 } from "./Classes/StorageVector3";
+import { Vector3Storage } from "./Classes/Vectors/Vector3Storage";
+import { IVector3 } from "./Classes/Vectors/IVector3";
 
 
 export interface ICameraSpecification {
@@ -20,10 +20,10 @@ export class CameraSpecification {
     }
 
     public ToObject(): ICameraSpecification {
-        let position = StorageVector3.ToObject(this.Position);
-        let rotation = StorageVector3.ToObject(this.Rotation);
-        let up = StorageVector3.ToObject(this.Up);
-        let target = StorageVector3.ToObject(this.Target);
+        let position = Vector3Storage.ToObjFromVector3(this.Position);
+        let rotation = Vector3Storage.ToObjFromVector3(this.Rotation);
+        let up = Vector3Storage.ToObjFromVector3(this.Up);
+        let target = Vector3Storage.ToObjFromVector3(this.Target);
 
         let output: ICameraSpecification = {
             Position: position,
@@ -35,16 +35,16 @@ export class CameraSpecification {
     }
 
     public FromObject(obj: ICameraSpecification) {
-        let position = StorageVector3.FromObject(obj.Position);
+        let position = Vector3Storage.ToVector3FromObj(obj.Position);
         this.Position.copy(position);
 
-        let rotation = StorageVector3.FromObject(obj.Rotation);
+        let rotation = Vector3Storage.ToVector3FromObj(obj.Rotation);
         this.Rotation.copy(rotation);
 
-        let up = StorageVector3.FromObject(obj.Up);
+        let up = Vector3Storage.ToVector3FromObj(obj.Up);
         this.Up.copy(up);
 
-        let target = StorageVector3.FromObject(obj.Target);
+        let target = Vector3Storage.ToVector3FromObj(obj.Target);
         this.Target.copy(target);
     }
 

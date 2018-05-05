@@ -1,8 +1,8 @@
 import { Vector3 } from "three";
 import { SignalEvent, ISignalEvent } from "./Common/Events/SignalEvent";
-import { IVector3 } from "./Common";
-import { StorageVector3 } from "./Classes/StorageVector3";
 import { CoordinateSystemConversion } from "./CoordinateSystemConversion";
+import { IVector3 } from "./Classes/Vectors/IVector3";
+import { Vector3Storage } from "./Classes/Vectors/Vector3Storage";
 
 
 export interface ILightingSpecification {
@@ -71,8 +71,8 @@ export class LightingSpecification {
     }
 
     public ToObject(): ILightingSpecification {
-        let directionalDirection = StorageVector3.ToObjFromVector3(this.DirectionalPosition);
-        let pointLocation = StorageVector3.ToObjFromVector3(this.PointLocation);
+        let directionalDirection = Vector3Storage.ToObjFromVector3(this.DirectionalPosition);
+        let pointLocation = Vector3Storage.ToObjFromVector3(this.PointLocation);
 
         let output: ILightingSpecification = {
             AmbientOn: this.AmbientOn,

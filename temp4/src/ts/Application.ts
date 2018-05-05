@@ -28,7 +28,9 @@ import { EditorBox, EditorBoxResult } from "./Common/Boxes/EditorBox";
 import { IdentifiedManager } from "./Common/IdentifiedManager";
 import { PointAnnotation } from "./Annotations/PointAnnotation";
 import { EventedArray } from "./Common/EventedArray";
-import { StorageVector3 } from "./Classes/StorageVector3";
+import { PointVisualsManager } from "./Classes/PointVisualsManager";
+import { Vector3My } from "./Classes/Vectors/Vector3My";
+import { EventTester } from "./Common/Events/EventTester";
 
 
 export class Application {
@@ -47,6 +49,7 @@ export class Application {
     public static readonly CategoryManager = new CategoriesManager();
     public static readonly PointAnnotationsManager = new IdentifiedManager<PointAnnotation>();
     public static readonly PointMeshes = new EventedArray<Mesh>();
+    public static readonly PointVisualManagers = new Array<PointVisualsManager>();
 
 
     public static Main(): void {
@@ -162,6 +165,13 @@ export class Application {
                 });
             });
         }
+
+        let pointAnnotationsPreviouslySet = LocalStorageManager.PointAnnotationsExist();
+        if (pointAnnotationsPreviouslySet) {
+            let loaded = LocalStorageManager.LoadPointAnnotations();
+            Application.PointAnnotationsManager.Copy(loaded);
+        }
+        // Else do nothing.
 
         let needsTour = !coordinateSystemPreviouslySet || !cameraSpecificationPreviouslySet || !lightingSpecificationPreviouslySet;
         if (needsTour) {
@@ -310,7 +320,13 @@ export class Application {
         // };
         // editor.Show();
 
-        Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+        // Application.Theater.Renderer.domElement.addEventListener("mousedown", Application.WebGLOutputMouseDown);
+
+        let eventTester = new EventTester();
+
+        eventTester.OnSignal();
+        eventTester.OnSimple();
+        eventTester.OnEvent();
     }
 
     private static WebGLOutputMouseDown = (event: MouseEvent) => {
@@ -345,8 +361,8 @@ export class Application {
         // Add the point annotation.
         let pointAnnotationID = Application.PointAnnotationsManager.GetNextID();
         let standardPosition = CoordinateSystemConversion.ConvertPointPreferredToStandard(point, Application.PreferredCoordinateSystem.Value);
-        let standardPositionStorageVector = new StorageVector3(standardPosition.x, standardPosition.y, standardPosition.z);
-        let pointAnnotation = new PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, undefined, standardPositionStorageVector);
+        let standardPositionStorageVector = new Vector3My(standardPosition.x, standardPosition.y, standardPosition.z);
+        let pointAnnotation = new PointAnnotation(pointAnnotationID, 'Point Annotation' + pointAnnotationID, undefined, undefined, undefined, standardPositionStorageVector);
         Application.PointAnnotationsManager.Add(pointAnnotation);
 
         // Add the visual point.

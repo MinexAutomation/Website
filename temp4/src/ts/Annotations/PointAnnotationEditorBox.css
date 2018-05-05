@@ -1,0 +1,36 @@
+#PointAnnotations-EditorBody {
+    line-height: 1.6em;
+}
+
+#PointAnnotations-EditorBody div {
+    margin-bottom: 0.5em;
+}
+
+#PointAnnotations-EditorColor {
+    padding-bottom: 25px;
+}
+
+#PointAnnotations-EditorBody p {
+    display: inline;
+}
+
+#PointAnnotations-EditorBody input[type=text] {
+    width: 100%;
+}
+
+#PointAnnotations-EditorBody textarea {
+    width: 100%;
+    resize: none;
+}
+
+#PointAnnotations-EditorBody input[type=text] {
+    color: blue;
+}
+
+#PointAnnotations-EditorBody input[type=number]:valid {
+    color: green;
+}
+
+#PointAnnotations-EditorBody input[type=number]:invalid {
+    color: red;
+}

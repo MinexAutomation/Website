@@ -1,13 +1,12 @@
 import { CoordinateSystemConversion, ICoordinateSystemConversion } from "./CoordinateSystemConversion";
 import { Vector3, PerspectiveCamera, Light } from "three";
-import { IVector3 } from "./Common";
 import { CameraSpecification } from "./CameraSpecification";
 import { Application } from "./Application";
-import { StorageVector3 } from "./Classes/StorageVector3";
 import { LightingSpecification } from "./LightingSpecification";
 import { CategoriesManager } from "./Annotations/CategoriesManager";
 import { IdentifiedManager } from "./Common/IdentifiedManager";
 import { PointAnnotation } from "./Annotations/PointAnnotation";
+import { Vector3Storage } from "./Classes/Vectors/Vector3Storage";
 
 
 export class LocalStorageManager {
@@ -118,12 +117,12 @@ export class LocalStorageManager {
         let json = localStorage.getItem(LocalStorageManager.PointLocationName);
         let obj = JSON.parse(json);
 
-        let output = StorageVector3.ToVector3FromObj(obj);
+        let output = Vector3Storage.ToVector3FromObj(obj);
         return output;
     }
 
     public static SavePointLocation(point: Vector3) : void {
-        let obj = StorageVector3.ToObjFromVector3(point);
+        let obj = Vector3Storage.ToObjFromVector3(point);
         let json = JSON.stringify(obj);
         localStorage.setItem(LocalStorageManager.PointLocationName, json);
     }

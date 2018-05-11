@@ -17,13 +17,13 @@ function initializeSite() {
     initializeScene();
     initializeModel();
 
-    initializeStats(); // Optional.
+    // initializeStats(); // Optional.
     initializeClock();
 
     initializeDatGuiControls(); // Required since the controls data structure is referenced in the main render loop.
-    addDatGui(); // Optional.
+    // addDatGui(); // Optional.
 
-    initializeSelection();
+    // initializeSelection();
 }
 
 var siteData = new Object();
@@ -293,15 +293,15 @@ function initializeScene() {
     // var sphereSelectionMesh = new THREE.Mesh(sphereLight, sphereLightMaterial);
     // sphereSelectionMesh.position = pointLight.position;
     // scene.add(sphereLightMesh);
-    setSelection(selectionOn);
+    // setSelection(selectionOn);
 
     // Create a light, set its position, and add it to the scene.
     var pointLight = new THREE.PointLight(0xffffff);
     pointLight.position.copy(lightPosition);
     scene.add(pointLight);
     siteData.pointLight = pointLight;
-    setLight(lightOn);
-    setLightOscillation(lightOscillation);
+    // setLight(lightOn);
+    // setLightOscillation(lightOscillation);
 
     var sphereLight = new THREE.SphereGeometry(0.5);
     var sphereLightMaterial = new THREE.MeshBasicMaterial({ color: lightSphereColor });

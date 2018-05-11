@@ -12,51 +12,51 @@ window.addEventListener('load', function () {
     }
 }, false);
 
-// Respond to keyboard events to move the current object.
-window.addEventListener('keydown', onKeydown);
-function onKeydown(event) {
-    if (event.defaultPrevented) {
-        return; // Do nothing if the event has already been handled.
-    }
+// // Respond to keyboard events to move the current object.
+// window.addEventListener('keydown', onKeydown);
+// function onKeydown(event) {
+//     if (event.defaultPrevented) {
+//         return; // Do nothing if the event has already been handled.
+//     }
 
-    if(siteData.currentObjectMoveFunction == null) {
-        return; // Do nothing if there is nothing defined as movable.
-    }
+//     if(siteData.currentObjectMoveFunction == null) {
+//         return; // Do nothing if there is nothing defined as movable.
+//     }
 
-    switch (event.key) {
-        case 'ArrowUp':
-        case 'w':
-            siteData.currentObjectMoveFunction(+defaultIncrement, 0, 0);
-            break;
-        case 'ArrowDown':
-        case 's':
-            siteData.currentObjectMoveFunction(-defaultIncrement, 0, 0);
-            break;
-        case 'ArrowLeft':
-        case 'a':
-            siteData.currentObjectMoveFunction(0, -defaultIncrement, 0);
-            break;
-        case 'ArrowRight':
-        case 'd':
-            siteData.currentObjectMoveFunction(0, +defaultIncrement, 0);
-            break;
-        case 'Shift':
-        case 'r':
-            siteData.currentObjectMoveFunction(0, 0, +defaultIncrement);
-            break;
-        case 'Control':
-        case 'f':
-            siteData.currentObjectMoveFunction(0, 0, -defaultIncrement);
-            break;
-    }
-}
+//     switch (event.key) {
+//         case 'ArrowUp':
+//         case 'w':
+//             siteData.currentObjectMoveFunction(+defaultIncrement, 0, 0);
+//             break;
+//         case 'ArrowDown':
+//         case 's':
+//             siteData.currentObjectMoveFunction(-defaultIncrement, 0, 0);
+//             break;
+//         case 'ArrowLeft':
+//         case 'a':
+//             siteData.currentObjectMoveFunction(0, -defaultIncrement, 0);
+//             break;
+//         case 'ArrowRight':
+//         case 'd':
+//             siteData.currentObjectMoveFunction(0, +defaultIncrement, 0);
+//             break;
+//         case 'Shift':
+//         case 'r':
+//             siteData.currentObjectMoveFunction(0, 0, +defaultIncrement);
+//             break;
+//         case 'Control':
+//         case 'f':
+//             siteData.currentObjectMoveFunction(0, 0, -defaultIncrement);
+//             break;
+//     }
+// }
 
 siteData.currentObjectMoveFunction = moveLight;
 
 // Sets up the scene.
 function init() {
     initializeSite();
-    initializeVolumeSelection();
+    // initializeVolumeSelection();
 
     var step = 0;
     var increment = 0.05;

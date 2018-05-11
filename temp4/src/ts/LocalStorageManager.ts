@@ -7,6 +7,7 @@ import { CategoriesManager } from "./Annotations/CategoriesManager";
 import { IdentifiedManager } from "./Common/IdentifiedManager";
 import { PointAnnotation } from "./Annotations/PointAnnotation";
 import { Vector3Storage } from "./Classes/Vectors/Vector3Storage";
+import { SurfaceAnnotation } from "./Annotations/SurfaceAnnotation";
 
 
 export class LocalStorageManager {
@@ -16,7 +17,41 @@ export class LocalStorageManager {
     public static readonly LightingSpecificationName = 'LightingSpecification';
     public static readonly CategoriesName = 'Categories';
     public static readonly PointAnnotationsName = 'Point Annotations';
+    public static readonly SurfaceAnnotationsName = 'Surface Annotations';
 
+
+    public static SurfaceAnnotationsExist(): boolean {
+        let output = LocalStorageManager.SurfaceAnnotationsName in localStorage;
+        return output;
+    }
+
+    public static LoadSurfaceAnnotations(): IdentifiedManager<SurfaceAnnotation> {
+        let exists = LocalStorageManager.SurfaceAnnotationsExist();
+        if(!exists) {
+            return null;
+        }
+
+        let json = localStorage.getItem(LocalStorageManager.SurfaceAnnotationsName);
+        let objs = JSON.parse(json);
+
+        let output = new IdentifiedManager<SurfaceAnnotation>();
+        output.FromObject(objs, (obj) => {
+            let output = new SurfaceAnnotation();
+            output.FromObject(obj);
+            return output;
+        });
+
+        return output;
+    }
+
+    public static SaveSurfaceAnnotations(surfaceAnnotations: IdentifiedManager<SurfaceAnnotation>): void {
+        let obj = surfaceAnnotations.ToObject((value: SurfaceAnnotation) => {
+            let obj = value.ToObject();
+            return obj;
+        });
+        let json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.SurfaceAnnotationsName, json);
+    }
 
     public static PointAnnotationsExist(): boolean {
         let output = LocalStorageManager.PointAnnotationsName in localStorage;

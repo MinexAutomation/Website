@@ -2,7 +2,7 @@ import { SimpleEvent, ISimpleEvent } from "../Events/SimpleEvent";
 import { ButtonControl } from "../../Controls/ButtonControl";
 
 
-type EditorBoxResultAction = 'Accept' | 'Cancel';
+export type EditorBoxResultAction = 'Accept' | 'Cancel';
 
 export class EditorBoxResult<T> {
     public constructor(public readonly Action: EditorBoxResultAction, public readonly Instance: T) {}
@@ -52,6 +52,8 @@ export class EditorBox<T> {
 
         let result = new EditorBoxResult<T>(action, this.zInstance);
         this.zClosed.Dispatch(result);
+
+        this.IsDisposed = true;
     }
 
     /**

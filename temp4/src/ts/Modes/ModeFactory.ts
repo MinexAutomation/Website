@@ -11,6 +11,7 @@ import { SetLightsMode } from "./SetLightsMode";
 import { PointMode } from "./PointMode";
 import { PointAnnotationMode } from "./PointAnnotationMode";
 import { CategoryManagementMode } from "./CategoryManagementMode";
+import { SurfaceAnnotationMode } from "./SurfaceAnnotationMode";
 
 
 export class ModeFactory implements IFactory<string, IMode> {
@@ -54,6 +55,10 @@ export class ModeFactory implements IFactory<string, IMode> {
 
             case SetPreferredCoordinateSystemMode.ID:
                 output = new SetPreferredCoordinateSystemMode(this.ControlPanel);
+                break;
+
+            case SurfaceAnnotationMode.ID:
+                output = new SurfaceAnnotationMode(this.ControlPanel);
                 break;
 
             default:

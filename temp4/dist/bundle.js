@@ -71,6 +71,25 @@
 /************************************************************************/
 /******/ ({
 
+/***/ "./node_modules/css-loader/index.js!./src/ts/Annotations/PointAnnotationEditorBox.css":
+/*!***********************************************************************************!*\
+  !*** ./node_modules/css-loader!./src/ts/Annotations/PointAnnotationEditorBox.css ***!
+  \***********************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loader/lib/css-base.js */ "./node_modules/css-loader/lib/css-base.js")(false);
+// imports
+
+
+// module
+exports.push([module.i, "#PointAnnotations-EditorBody {\r\n    line-height: 1.6em;\r\n}\r\n\r\n#PointAnnotations-EditorBody div {\r\n    margin-bottom: 0.5em;\r\n}\r\n\r\n#PointAnnotations-EditorColor {\r\n    padding-bottom: 25px;\r\n}\r\n\r\n#PointAnnotations-EditorBody p {\r\n    display: inline;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=text] {\r\n    width: 100%;\r\n}\r\n\r\n#PointAnnotations-EditorBody textarea {\r\n    width: 100%;\r\n    resize: none;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=text] {\r\n    color: blue;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=number]:valid {\r\n    color: green;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=number]:invalid {\r\n    color: red;\r\n}", ""]);
+
+// exports
+
+
+/***/ }),
+
 /***/ "./node_modules/css-loader/index.js!./src/ts/Common/Boxes/InformationBox.css":
 /*!**************************************************************************!*\
   !*** ./node_modules/css-loader!./src/ts/Common/Boxes/InformationBox.css ***!
@@ -90,10 +109,10 @@ exports.push([module.i, "#InfoBox-Root {\r\n    display: block;\r\n    position:
 
 /***/ }),
 
-/***/ "./node_modules/css-loader/index.js!./src/ts/Modes/PointAnnotationMode.css":
-/*!************************************************************************!*\
-  !*** ./node_modules/css-loader!./src/ts/Modes/PointAnnotationMode.css ***!
-  \************************************************************************/
+/***/ "./node_modules/css-loader/index.js!./src/ts/Modes/SurfaceAnnotationMode.css":
+/*!**************************************************************************!*\
+  !*** ./node_modules/css-loader!./src/ts/Modes/SurfaceAnnotationMode.css ***!
+  \**************************************************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -102,7 +121,7 @@ exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loa
 
 
 // module
-exports.push([module.i, "#PointAnnotations-EditorBody {\r\n    line-height: 1.6em;\r\n}\r\n\r\n#PointAnnotations-EditorBody div {\r\n    margin-bottom: 0.5em;\r\n}\r\n\r\n#PointAnnotations-EditorColor {\r\n    padding-bottom: 25px;\r\n}\r\n\r\n#PointAnnotations-EditorBody p {\r\n    display: inline;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=text] {\r\n    width: 100%;\r\n}\r\n\r\n#PointAnnotations-EditorBody textarea {\r\n    width: 100%;\r\n    resize: none;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=text] {\r\n    color: blue;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=number]:valid {\r\n    color: green;\r\n}\r\n\r\n#PointAnnotations-EditorBody input[type=number]:invalid {\r\n    color: red;\r\n}", ""]);
+exports.push([module.i, "#SurfaceAnnotations-Singular p {\r\n    margin-top: 0px;\r\n    margin-bottom: 5px;\r\n}\r\n\r\n#SurfaceAnnotations-SelectorTypeSelect {\r\n    margin-bottom: 5px;\r\n}", ""]);
 
 // exports
 
@@ -52661,6 +52680,255 @@ THREE.OBJLoader = ( function () {
 
 /***/ }),
 
+/***/ "./src/ts/Annotations/BoxSurfaceSelector.js":
+/*!**************************************************!*\
+  !*** ./src/ts/Annotations/BoxSurfaceSelector.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Box3My_1 = __webpack_require__(/*! ../Classes/Box3My */ "./src/ts/Classes/Box3My.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/**
+ * Selects points within the cartesian axes-aligned box specifid by two corner points.
+ */
+var BoxSurfaceSelector = /** @class */ (function () {
+    function BoxSurfaceSelector(corner1, corner2) {
+        if (corner1 === void 0) { corner1 = new three_1.Vector3(0, 0, 0); }
+        if (corner2 === void 0) { corner2 = new three_1.Vector3(1, 1, 1); }
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zCorner1 = new three_1.Vector3();
+        this.zCorner2 = new three_1.Vector3();
+        this.BoundingBox = new Box3My_1.Box3My();
+        this.IsDisposed = false;
+        this.Corner1 = corner1;
+        this.Corner2 = corner2;
+    }
+    BoxSurfaceSelector.IsBoxSurfaceSelector = function (surfaceSelector) {
+        return surfaceSelector.SurfaceSelectorTypeID === BoxSurfaceSelector.SurfaceSelectorTypeID;
+    };
+    Object.defineProperty(BoxSurfaceSelector.prototype, "SurfaceSelectorTypeID", {
+        get: function () {
+            return BoxSurfaceSelector.SurfaceSelectorTypeID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(BoxSurfaceSelector.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    BoxSurfaceSelector.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    Object.defineProperty(BoxSurfaceSelector.prototype, "Corner1", {
+        /**
+         * Get a clone of the point.
+         */
+        get: function () {
+            return this.zCorner1.clone();
+        },
+        /**
+         * Copy values from a given point.
+         */
+        set: function (value) {
+            this.zCorner1.copy(value);
+            this.UpdateBoundingBox();
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(BoxSurfaceSelector.prototype, "Corner2", {
+        /**
+         * Get a clone of the point.
+         */
+        get: function () {
+            return this.zCorner2.clone();
+        },
+        /**
+         * Copy values from a given point.
+         */
+        set: function (value) {
+            this.zCorner2.copy(value);
+            this.UpdateBoundingBox();
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    BoxSurfaceSelector.prototype.UpdateBoundingBox = function () {
+        this.BoundingBox.Update(this.zCorner1.x, this.zCorner2.x, this.zCorner1.y, this.zCorner2.y, this.zCorner1.z, this.zCorner2.z);
+    };
+    BoxSurfaceSelector.prototype.Dispose = function () {
+        if (!this.IsDisposed) {
+        }
+    };
+    BoxSurfaceSelector.prototype.IncludePoint = function (x, y, z) {
+        var output = this.BoundingBox.Contains(x, y, z);
+        return output;
+    };
+    BoxSurfaceSelector.SurfaceSelectorTypeID = 'BOX';
+    return BoxSurfaceSelector;
+}());
+exports.BoxSurfaceSelector = BoxSurfaceSelector;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/BoxSurfaceSelectorVisual.js":
+/*!********************************************************!*\
+  !*** ./src/ts/Annotations/BoxSurfaceSelectorVisual.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var Box3My_1 = __webpack_require__(/*! ../Classes/Box3My */ "./src/ts/Classes/Box3My.js");
+var BoxSurfaceSelectorVisual = /** @class */ (function () {
+    function BoxSurfaceSelectorVisual(selector, controlPanel) {
+        var _this = this;
+        this.Corner1Geometry = new three_1.SphereGeometry(BoxSurfaceSelectorVisual.DefaultCornerRadius);
+        this.Corner1Material = new three_1.MeshBasicMaterial({ color: BoxSurfaceSelectorVisual.DefaultCorner1Color });
+        this.Corner1Mesh = new three_1.Mesh(this.Corner1Geometry, this.Corner1Material);
+        this.Corner2Geometry = new three_1.SphereGeometry(BoxSurfaceSelectorVisual.DefaultCornerRadius);
+        this.Corner2Material = new three_1.MeshBasicMaterial({ color: BoxSurfaceSelectorVisual.DefaultCorner2Color });
+        this.Corner2Mesh = new three_1.Mesh(this.Corner2Geometry, this.Corner2Material);
+        this.BoxGeometry = new three_1.BoxGeometry(BoxSurfaceSelectorVisual.DefaultBoxSize, BoxSurfaceSelectorVisual.DefaultBoxSize, BoxSurfaceSelectorVisual.DefaultBoxSize);
+        this.BoxMaterial = new three_1.MeshBasicMaterial({ color: BoxSurfaceSelectorVisual.DefaultBoxColor, wireframe: true });
+        this.BoxMesh = new three_1.Mesh(this.BoxGeometry, this.BoxMaterial);
+        this.SelectorChangedHandler = function () {
+            _this.Corner1Mesh.position.copy(_this.Selector.Corner1);
+            _this.Corner2Mesh.position.copy(_this.Selector.Corner2);
+            var boundingBox = new Box3My_1.Box3My();
+            boundingBox.Update(_this.Selector.Corner1.x, _this.Selector.Corner2.x, _this.Selector.Corner1.y, _this.Selector.Corner2.y, _this.Selector.Corner1.z, _this.Selector.Corner2.z);
+            var xSize = boundingBox.xMax - boundingBox.xMin;
+            var ySize = boundingBox.yMax - boundingBox.yMin;
+            var zSize = boundingBox.zMax - boundingBox.zMin;
+            _this.BoxMesh.scale.set(xSize, ySize, zSize);
+            var newPosition = new three_1.Vector3(boundingBox.xMin + xSize / 2, boundingBox.yMin + ySize / 2, boundingBox.zMin + zSize / 2);
+            _this.BoxMesh.position.copy(newPosition);
+        };
+        this.WindowKeyDownHandler = function (ev) {
+            switch (ev.keyCode) {
+                // Right.
+                case 68: // 'd'
+                case 39: // right-arrow
+                    _this.MoveFunction(1, 0, 0);
+                    break;
+                // Left.
+                case 65: // 'a'
+                case 37: // left-arrow
+                    _this.MoveFunction(-1, 0, 0);
+                    break;
+                // Up.
+                case 87: // 'w'
+                case 38: // up-arrow
+                    _this.MoveFunction(0, 1, 0);
+                    break;
+                // Down.
+                case 83: // 's'
+                case 40: // down-arrow
+                    _this.MoveFunction(0, -1, 0);
+                    break;
+                // In.
+                case 82: // 'r'
+                case 16: // shft
+                    _this.MoveFunction(0, 0, 1);
+                    break;
+                // Out.
+                case 70: // 'f'
+                case 17: // ctrl
+                    _this.MoveFunction(0, 0, -1);
+                    break;
+                default:
+                    // Do nothing.
+                    break;
+            }
+        };
+        this.Corner1ClickHandler = function () {
+            _this.MoveFunction = function (x, y, z) {
+                _this.Selector.Corner1 = _this.Selector.Corner1.add(new three_1.Vector3(x, y, z));
+            };
+        };
+        this.Corner2ClickHandler = function () {
+            _this.MoveFunction = function (x, y, z) {
+                _this.Selector.Corner2 = _this.Selector.Corner2.add(new three_1.Vector3(x, y, z));
+            };
+        };
+        this.BoxSelectorFinishedButtonClickHandler = function () {
+            _this.Dispose();
+        };
+        this.Selector = selector;
+        this.ControlPanel = controlPanel;
+        this.CreateBoxSelectorControls();
+        this.ConnectEvents();
+        Application_1.Application.Theater.Scene.add(this.Corner1Mesh);
+        Application_1.Application.Theater.Scene.add(this.Corner2Mesh);
+        Application_1.Application.Theater.Scene.add(this.BoxMesh);
+    }
+    BoxSurfaceSelectorVisual.prototype.Dispose = function () {
+        Application_1.Application.Theater.Scene.remove(this.Corner1Mesh);
+        this.Corner1Material.dispose();
+        this.Corner1Geometry.dispose();
+        Application_1.Application.Theater.Scene.remove(this.Corner2Mesh);
+        this.Corner2Material.dispose();
+        this.Corner2Geometry.dispose();
+        Application_1.Application.Theater.Scene.remove(this.BoxMesh);
+        this.BoxMaterial.dispose();
+        this.BoxGeometry.dispose();
+        this.DisconnectEvents();
+        this.DisposeBoxSelectorControls();
+    };
+    BoxSurfaceSelectorVisual.prototype.ConnectEvents = function () {
+        this.Selector.Changed.Subscribe(this.SelectorChangedHandler);
+        window.addEventListener('keydown', this.WindowKeyDownHandler);
+        this.SelectorChangedHandler();
+        this.Corner1ClickHandler(); // Set the initial move object to be corner 1.
+    };
+    BoxSurfaceSelectorVisual.prototype.DisconnectEvents = function () {
+        this.Selector.Changed.Unsubscribe(this.SelectorChangedHandler);
+        window.removeEventListener('keydown', this.WindowKeyDownHandler);
+    };
+    BoxSurfaceSelectorVisual.prototype.CreateBoxSelectorControls = function () {
+        this.BoxSelectorHtmlElement = this.ControlPanel.CreateChildControlElement(BoxSurfaceSelectorVisual.BoxSelectorHtmlElementID);
+        this.ControlPanel.CreateChildControlTitle(this.BoxSelectorHtmlElement, 'Box Selector');
+        this.Corner1Button = new ButtonControl_1.ButtonControl(this.BoxSelectorHtmlElement, 'Corner 1');
+        this.Corner1Button.Click.Subscribe(this.Corner1ClickHandler);
+        this.Corner2Button = new ButtonControl_1.ButtonControl(this.BoxSelectorHtmlElement, 'Corner 2');
+        this.Corner2Button.Click.Subscribe(this.Corner2ClickHandler);
+        this.BoxSelectorFinishedButton = new ButtonControl_1.ButtonControl(this.BoxSelectorHtmlElement, 'Finished');
+        this.BoxSelectorFinishedButton.Click.Subscribe(this.BoxSelectorFinishedButtonClickHandler);
+    };
+    BoxSurfaceSelectorVisual.prototype.DisposeBoxSelectorControls = function () {
+        this.BoxSelectorHtmlElement.remove();
+        this.BoxSelectorHtmlElement = null;
+    };
+    BoxSurfaceSelectorVisual.BoxSelectorHtmlElementID = 'SurfaceAnnotations-BoxSelector';
+    BoxSurfaceSelectorVisual.DefaultCornerRadius = 0.5;
+    BoxSurfaceSelectorVisual.DefaultCorner1Color = 0xff0000;
+    BoxSurfaceSelectorVisual.DefaultCorner2Color = 0x00ff00;
+    BoxSurfaceSelectorVisual.DefaultBoxSize = 1;
+    BoxSurfaceSelectorVisual.DefaultBoxColor = new three_1.Color('plum');
+    return BoxSurfaceSelectorVisual;
+}());
+exports.BoxSurfaceSelectorVisual = BoxSurfaceSelectorVisual;
+
+
+/***/ }),
+
 /***/ "./src/ts/Annotations/CategoriesManager.js":
 /*!*************************************************!*\
   !*** ./src/ts/Annotations/CategoriesManager.js ***!
@@ -53049,6 +53317,942 @@ exports.PointAnnotation = PointAnnotation;
 
 /***/ }),
 
+/***/ "./src/ts/Annotations/PointAnnotationEditorBox.css":
+/*!*********************************************************!*\
+  !*** ./src/ts/Annotations/PointAnnotationEditorBox.css ***!
+  \*********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(/*! !../../../node_modules/css-loader!./PointAnnotationEditorBox.css */ "./node_modules/css-loader/index.js!./src/ts/Annotations/PointAnnotationEditorBox.css");
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(/*! ../../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {}
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/PointAnnotationEditorBox.html":
+/*!**********************************************************!*\
+  !*** ./src/ts/Annotations/PointAnnotationEditorBox.html ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+module.exports = "<div>\r\n    <label>Name:\r\n        <abbr title=\"Name is required.\">*</abbr>\r\n    </label>\r\n    <input type=\"text\" id=\"PointAnnotations-EditorName\" placeholder=\"Name...\" required>\r\n</div>\r\n<div>\r\n    <label>Description:</label>\r\n    <textarea id=\"PointAnnotations-EditorDescription\" rows=\"3\"></textarea>\r\n</div>\r\n<div>\r\n    <label>Use Category?</label>\r\n    <input id=\"PointAnnotations-EditorUseCategory\" type=\"checkbox\">\r\n</div>\r\n<div>\r\n    <label>Category:</label>\r\n    <select id=\"PointAnnotations-EditorCategory\"></select>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>Visual Properties:</label>\r\n    <div>\r\n        <label>Color:</label>\r\n        <div id=\"PointAnnotations-EditorColor\"></div>\r\n        <label>Size:</label>\r\n        <input type=\"number\" id=\"PointAnnotations-EditorSize\" min=\"0\" max=\"10\" step=\"0.1\">\r\n        <br>\r\n        <label>Transparency:</label>\r\n        <input type=\"number\" id=\"PointAnnotations-EditorTransparency\" min=\"0\" max=\"1\" step=\"0.1\">\r\n    </div>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>Location:</label>\r\n    <br>\r\n    <label>Model:</label>\r\n    <p id=\"PointAnnotations-EditorModelLocation\"></p>\r\n    <br>\r\n    <label>Standard</label>\r\n    <p id=\"PointAnnotations-EditorStandardLocation\"></p>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>ID:</label>\r\n    <p id=\"PointAnnotations-EditorPointID\"></p>\r\n</div>";
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/PointAnnotationEditorBox.js":
+/*!********************************************************!*\
+  !*** ./src/ts/Annotations/PointAnnotationEditorBox.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
+var dat = wDatGui.default; // Workaround.
+var EditorBox_1 = __webpack_require__(/*! ../Common/Boxes/EditorBox */ "./src/ts/Common/Boxes/EditorBox.js");
+var template = __webpack_require__(/*! ./PointAnnotationEditorBox.html */ "./src/ts/Annotations/PointAnnotationEditorBox.html");
+__webpack_require__(/*! ./PointAnnotationEditorBox.css */ "./src/ts/Annotations/PointAnnotationEditorBox.css");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var Vector3My_1 = __webpack_require__(/*! ../Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
+var PointAnnotationEditorBox = /** @class */ (function (_super) {
+    __extends(PointAnnotationEditorBox, _super);
+    function PointAnnotationEditorBox(instance, caption) {
+        if (caption === void 0) { caption = 'Edit Point Annotation'; }
+        var _this = _super.call(this, instance, caption) || this;
+        _this.IsDisposedPointAnnotationEditorBox = false;
+        // Add templated HTML.
+        var body = document.createElement('div');
+        _this.BodyHtmlElement.appendChild(body);
+        body.id = PointAnnotationEditorBox.EditorBodyHtmlElementID;
+        body.innerHTML += template;
+        // Bind to the HTML objects added in the template.
+        _this.EditorNameHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorNameHtmlElementID);
+        _this.EditorDescriptionHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorDescriptionHtmlElementID);
+        _this.EditorUseCategoryHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorUseCategoryHtmlElementID);
+        _this.EditorCategoryHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorCategoryHtmlElementID);
+        _this.EditorColorHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorColorHtmlElementID);
+        _this.EditorSizeHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorSizeHtmlElementID);
+        _this.EditorTransparencyHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorTransparencyHtmlElementID);
+        _this.EditorModelLocationHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorModelLocationHtmlElementID);
+        _this.EditorStandardLocationHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorStandardLocationHtmlElementID);
+        _this.EditorPointIDHtmlElement = document.getElementById(PointAnnotationEditorBox.EditorPointIDHtmlElementID);
+        // Start off with the category disabled.
+        _this.EditorCategoryHtmlElement.disabled = true;
+        // All the categories into the select.
+        var categories = Application_1.Application.CategoryManager.Categories;
+        categories.forEach(function (category) {
+            var option = document.createElement('option');
+            option.value = category.ID.toString();
+            option.innerHTML = category.Name;
+            _this.EditorCategoryHtmlElement.appendChild(option);
+        }, _this);
+        var instanceForEdit = _this.Instance;
+        // If the point annotation has a category, determine its index, and set the selected index. Note: makes use of the same ordering as categories were added above.
+        if (null !== instanceForEdit.Category) {
+            for (var iCategory = 0; iCategory < categories.length; iCategory++) {
+                var category = categories[iCategory];
+                if (category === instanceForEdit.Category) {
+                    _this.EditorCategoryHtmlElement.selectedIndex = iCategory;
+                    break;
+                }
+            }
+        }
+        // The visuals color picker.
+        _this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
+        _this.EditorColorHtmlElement.appendChild(_this.EditorVisualsDatGUI.domElement);
+        var r = instanceForEdit.Visuals.Color.R * 255;
+        var g = instanceForEdit.Visuals.Color.G * 255;
+        var b = instanceForEdit.Visuals.Color.B * 255;
+        var tempObj = { ColorValue: [r, g, b], };
+        var color = _this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
+        color.onChange(function () {
+            instanceForEdit.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
+        });
+        // Set form values.
+        _this.EditorNameHtmlElement.value = instanceForEdit.Name;
+        _this.EditorDescriptionHtmlElement.value = instanceForEdit.Description;
+        var useCategory = null !== instanceForEdit.Category;
+        _this.EditorUseCategoryHtmlElement.checked = useCategory;
+        if (useCategory) {
+            _this.SetUseCategoryVisuals();
+        }
+        else {
+            _this.SetUseAnnotationVisuals();
+        }
+        _this.EditorSizeHtmlElement.value = instanceForEdit.Visuals.Size.toString();
+        _this.EditorTransparencyHtmlElement.value = instanceForEdit.Visuals.Transparency.toString();
+        _this.EditorStandardLocationHtmlElement.innerHTML = instanceForEdit.StandardLocation.ToString();
+        var standardLocation = instanceForEdit.StandardLocation.ToVector3();
+        var preferredLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardLocation, Application_1.Application.PreferredCoordinateSystem.Value);
+        var pref = new Vector3My_1.Vector3My();
+        pref.FromVector3(preferredLocation);
+        _this.EditorModelLocationHtmlElement.innerHTML = pref.ToString();
+        _this.EditorPointIDHtmlElement.innerHTML = instanceForEdit.ID.toString();
+        // Update temporary instance in response to form changes.
+        _this.EditorNameHtmlElement.onchange = function () {
+            instanceForEdit.Name = _this.EditorNameHtmlElement.value;
+        };
+        _this.EditorDescriptionHtmlElement.onchange = function () {
+            instanceForEdit.Description = _this.EditorDescriptionHtmlElement.value;
+        };
+        _this.EditorUseCategoryHtmlElement.onchange = function () {
+            if (_this.EditorUseCategoryHtmlElement.checked) {
+                _this.SetUseCategoryVisuals();
+                instanceForEdit.Category = _this.GetCategory(); // Set the category initially.
+            }
+            else {
+                _this.SetUseAnnotationVisuals();
+                instanceForEdit.Category = null;
+            }
+        };
+        _this.EditorCategoryHtmlElement.onchange = function () {
+            instanceForEdit.Category = _this.GetCategory();
+        };
+        _this.EditorSizeHtmlElement.onchange = function () {
+            instanceForEdit.Visuals.Size = parseFloat(_this.EditorSizeHtmlElement.value);
+        };
+        _this.EditorTransparencyHtmlElement.onchange = function () {
+            instanceForEdit.Visuals.Transparency = parseFloat(_this.EditorTransparencyHtmlElement.value);
+        };
+        return _this;
+    }
+    PointAnnotationEditorBox.prototype.Dispose = function (action) {
+        if (this.IsDisposedPointAnnotationEditorBox) {
+            return;
+        }
+        this.EditorVisualsDatGUI.destroy();
+        _super.prototype.Dispose.call(this, action);
+        this.IsDisposedPointAnnotationEditorBox = true;
+    };
+    PointAnnotationEditorBox.prototype.SetUseCategoryVisuals = function () {
+        this.EditorCategoryHtmlElement.disabled = false;
+        this.EditorColorHtmlElement.style.pointerEvents = 'none';
+        this.EditorColorHtmlElement.style.opacity = '0.5';
+        this.EditorSizeHtmlElement.disabled = true;
+        this.EditorTransparencyHtmlElement.disabled = true;
+    };
+    PointAnnotationEditorBox.prototype.SetUseAnnotationVisuals = function () {
+        this.EditorCategoryHtmlElement.disabled = true;
+        this.EditorColorHtmlElement.style.pointerEvents = 'auto';
+        this.EditorColorHtmlElement.style.opacity = '1';
+        this.EditorSizeHtmlElement.disabled = false;
+        this.EditorTransparencyHtmlElement.disabled = false;
+    };
+    PointAnnotationEditorBox.prototype.GetCategory = function () {
+        if (0 < this.EditorCategoryHtmlElement.childNodes.length) {
+            var option = this.EditorCategoryHtmlElement.childNodes[this.EditorCategoryHtmlElement.selectedIndex];
+            var IDStr = option.value;
+            var category = Application_1.Application.CategoryManager.GetCategoryByIDString(IDStr);
+            return category;
+        }
+        else {
+            return null;
+        }
+    };
+    PointAnnotationEditorBox.EditorBodyHtmlElementID = 'PointAnnotations-EditorBody';
+    PointAnnotationEditorBox.EditorNameHtmlElementID = 'PointAnnotations-EditorName';
+    PointAnnotationEditorBox.EditorDescriptionHtmlElementID = 'PointAnnotations-EditorDescription';
+    PointAnnotationEditorBox.EditorUseCategoryHtmlElementID = 'PointAnnotations-EditorUseCategory';
+    PointAnnotationEditorBox.EditorCategoryHtmlElementID = 'PointAnnotations-EditorCategory';
+    PointAnnotationEditorBox.EditorColorHtmlElementID = 'PointAnnotations-EditorColor';
+    PointAnnotationEditorBox.EditorSizeHtmlElementID = 'PointAnnotations-EditorSize';
+    PointAnnotationEditorBox.EditorTransparencyHtmlElementID = 'PointAnnotations-EditorTransparency';
+    PointAnnotationEditorBox.EditorModelLocationHtmlElementID = 'PointAnnotations-EditorModelLocation';
+    PointAnnotationEditorBox.EditorStandardLocationHtmlElementID = 'PointAnnotations-EditorStandardLocation';
+    PointAnnotationEditorBox.EditorPointIDHtmlElementID = 'PointAnnotations-EditorPointID';
+    return PointAnnotationEditorBox;
+}(EditorBox_1.EditorBox));
+exports.PointAnnotationEditorBox = PointAnnotationEditorBox;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SphereSurfaceSelector.js":
+/*!*****************************************************!*\
+  !*** ./src/ts/Annotations/SphereSurfaceSelector.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var SphereSurfaceSelector = /** @class */ (function () {
+    function SphereSurfaceSelector(center, radius) {
+        if (center === void 0) { center = new three_1.Vector3(0, 0, 0); }
+        if (radius === void 0) { radius = 1; }
+        this.zChanged = new SimpleEvent_1.SimpleEvent();
+        this.zCenter = new three_1.Vector3();
+        this.Center = center;
+        this.Radius = radius;
+    }
+    SphereSurfaceSelector.IsSphereSurfaceSelector = function (surfaceSelector) {
+        return surfaceSelector.SurfaceSelectorTypeID === SphereSurfaceSelector.SurfaceSelectorTypeID;
+    };
+    Object.defineProperty(SphereSurfaceSelector.prototype, "SurfaceSelectorTypeID", {
+        get: function () {
+            return SphereSurfaceSelector.SurfaceSelectorTypeID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SphereSurfaceSelector.prototype, "Changed", {
+        get: function () {
+            return this.zChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SphereSurfaceSelector.prototype.OnChanged = function () {
+        this.zChanged.Dispatch(this);
+    };
+    Object.defineProperty(SphereSurfaceSelector.prototype, "Center", {
+        /**
+         * Get a clone of the point.
+         */
+        get: function () {
+            return this.zCenter.clone();
+        },
+        /**
+         * Copy values from a given point.
+         */
+        set: function (value) {
+            this.zCenter.copy(value);
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SphereSurfaceSelector.prototype, "Radius", {
+        get: function () {
+            return this.zRadius;
+        },
+        set: function (value) {
+            this.zRadius = value;
+            this.OnChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SphereSurfaceSelector.prototype.IncludePoint = function (x, y, z) {
+        var deltaX = x - this.Center.x;
+        var deltaY = y - this.Center.y;
+        var deltaZ = z - this.Center.z;
+        var distanceSquared = Math.pow(deltaX, 2) + Math.pow(deltaY, 2) + Math.pow(deltaZ, 2);
+        var distance = Math.sqrt(distanceSquared);
+        var output = distance <= this.Radius;
+        return output;
+    };
+    SphereSurfaceSelector.SurfaceSelectorTypeID = 'SPHERE';
+    return SphereSurfaceSelector;
+}());
+exports.SphereSurfaceSelector = SphereSurfaceSelector;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SphereSurfaceSelectorVisual.js":
+/*!***********************************************************!*\
+  !*** ./src/ts/Annotations/SphereSurfaceSelectorVisual.js ***!
+  \***********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var SphereSurfaceSelectorVisual = /** @class */ (function () {
+    function SphereSurfaceSelectorVisual(selector, controlPanel) {
+        var _this = this;
+        this.CenterGeometry = new three_1.SphereGeometry(SphereSurfaceSelectorVisual.DefaultCenterRadius);
+        this.CenterMaterial = new three_1.MeshBasicMaterial({ color: SphereSurfaceSelectorVisual.DefaultCenterColor });
+        this.CenterMesh = new three_1.Mesh(this.CenterGeometry, this.CenterMaterial);
+        this.SphereGeometry = new three_1.SphereGeometry(SphereSurfaceSelectorVisual.DefaultSphereRadius);
+        this.SphereMaterial = new three_1.MeshBasicMaterial({ color: SphereSurfaceSelectorVisual.DefaultSphereColor, wireframe: true });
+        this.SphereMesh = new three_1.Mesh(this.SphereGeometry, this.SphereMaterial);
+        this.SelectorChangedHandler = function () {
+            _this.CenterMesh.position.copy(_this.Selector.Center);
+            _this.SphereMesh.position.copy(_this.Selector.Center);
+            _this.SphereMesh.scale.set(_this.Selector.Radius, _this.Selector.Radius, _this.Selector.Radius);
+        };
+        this.WindowKeyDownHandler = function (ev) {
+            switch (ev.keyCode) {
+                // Right.
+                case 68: // 'd'
+                case 39: // right-arrow
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(1, 0, 0));
+                    break;
+                // Left.
+                case 65: // 'a'
+                case 37: // left-arrow
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(-1, 0, 0));
+                    break;
+                // Up.
+                case 87: // 'w'
+                case 38: // up-arrow
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(0, 1, 0));
+                    break;
+                // Down.
+                case 83: // 's'
+                case 40: // down-arrow
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(0, -1, 0));
+                    break;
+                // In.
+                case 82: // 'r'
+                case 16: // shft
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(0, 0, 1));
+                    break;
+                // Out.
+                case 70: // 'f'
+                case 17: // ctrl
+                    _this.Selector.Center = _this.Selector.Center.add(new three_1.Vector3(0, 0, -1));
+                    break;
+                // Increase radius.
+                case 84: // 't'
+                case 107: // add
+                    _this.Selector.Radius = _this.Selector.Radius + 1;
+                    break;
+                // Decrease radius.
+                case 71: // 'g'
+                case 109: // subtract
+                    _this.Selector.Radius = _this.Selector.Radius - 1;
+                    break;
+                default:
+                    // Do nothing.
+                    break;
+            }
+        };
+        this.SphereSelectorFinishedClick = function () {
+            _this.Dispose();
+        };
+        this.Selector = selector;
+        this.ControlPanel = controlPanel;
+        this.CreateSphereSelectorControls();
+        this.ConnectEvents();
+        Application_1.Application.Theater.Scene.add(this.CenterMesh);
+        Application_1.Application.Theater.Scene.add(this.SphereMesh);
+    }
+    SphereSurfaceSelectorVisual.prototype.Dispose = function () {
+        Application_1.Application.Theater.Scene.remove(this.CenterMesh);
+        this.CenterMaterial.dispose();
+        this.CenterGeometry.dispose();
+        Application_1.Application.Theater.Scene.remove(this.SphereMesh);
+        this.SphereMaterial.dispose();
+        this.SphereGeometry.dispose();
+        this.DisconnectEvents();
+        this.DisposeSphereSelectorControls();
+    };
+    SphereSurfaceSelectorVisual.prototype.ConnectEvents = function () {
+        this.Selector.Changed.Subscribe(this.SelectorChangedHandler);
+        window.addEventListener('keydown', this.WindowKeyDownHandler);
+        this.SelectorChangedHandler();
+    };
+    SphereSurfaceSelectorVisual.prototype.DisconnectEvents = function () {
+        this.Selector.Changed.Unsubscribe(this.SelectorChangedHandler);
+        window.removeEventListener('keydown', this.WindowKeyDownHandler);
+    };
+    SphereSurfaceSelectorVisual.prototype.CreateSphereSelectorControls = function () {
+        this.SphereSelectorHtmlElement = this.ControlPanel.CreateChildControlElement(SphereSurfaceSelectorVisual.SphereSelectorHtmlElementID);
+        this.ControlPanel.CreateChildControlTitle(this.SphereSelectorHtmlElement, 'Sphere Selector');
+        this.CenterButton = new ButtonControl_1.ButtonControl(this.SphereSelectorHtmlElement, 'Center');
+        this.RadiusButton = new ButtonControl_1.ButtonControl(this.SphereSelectorHtmlElement, 'Radius');
+        this.SphereSelectorFinishedButton = new ButtonControl_1.ButtonControl(this.SphereSelectorHtmlElement, 'Finished');
+        this.SphereSelectorFinishedButton.Click.Subscribe(this.SphereSelectorFinishedClick);
+    };
+    SphereSurfaceSelectorVisual.prototype.DisposeSphereSelectorControls = function () {
+        this.SphereSelectorHtmlElement.remove();
+        this.SphereSelectorHtmlElement = null;
+    };
+    SphereSurfaceSelectorVisual.SphereSelectorHtmlElementID = 'SurfaceAnnotations-SphereSelector';
+    SphereSurfaceSelectorVisual.DefaultCenterRadius = 0.5;
+    SphereSurfaceSelectorVisual.DefaultCenterColor = new three_1.Color(0xff0000);
+    SphereSurfaceSelectorVisual.DefaultSphereRadius = 1;
+    SphereSurfaceSelectorVisual.DefaultSphereColor = new three_1.Color('plum');
+    return SphereSurfaceSelectorVisual;
+}());
+exports.SphereSurfaceSelectorVisual = SphereSurfaceSelectorVisual;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SurfaceAnnotation.js":
+/*!*************************************************!*\
+  !*** ./src/ts/Annotations/SurfaceAnnotation.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var Category_1 = __webpack_require__(/*! ./Category */ "./src/ts/Annotations/Category.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var SimpleEvent_1 = __webpack_require__(/*! ../Common/Events/SimpleEvent */ "./src/ts/Common/Events/SimpleEvent.js");
+var VisualSpecification_1 = __webpack_require__(/*! ../Classes/VisualSpecification */ "./src/ts/Classes/VisualSpecification.js");
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var SurfaceSelectorLocalStorageManager_1 = __webpack_require__(/*! ./SurfaceSelectorLocalStorageManager */ "./src/ts/Annotations/SurfaceSelectorLocalStorageManager.js");
+var GeometryLocalStorageManager_1 = __webpack_require__(/*! ../Classes/GeometryLocalStorageManager */ "./src/ts/Classes/GeometryLocalStorageManager.js");
+var SurfaceAnnotation = /** @class */ (function () {
+    function SurfaceAnnotation(selector, id, name, description, category, visualSpecification) {
+        if (description === void 0) { description = ""; }
+        if (category === void 0) { category = null; }
+        if (visualSpecification === void 0) { visualSpecification = new VisualSpecification_1.VisualSpecification(); }
+        var _this = this;
+        this.zSelector = null;
+        this.SelectorChangedHandler = function () {
+            _this.OnSelectorChanged();
+        };
+        this.zSelectorChanged = new SimpleEvent_1.SimpleEvent();
+        this.zVisualSpecification = null;
+        this.VisualSpecificationChangedHandler = function () {
+            _this.OnVisualSpecificationChanged();
+        };
+        this.zVisualSpecificationChanged = new SimpleEvent_1.SimpleEvent();
+        this.zCategory = null;
+        this.CategoryChangedHandler = function () {
+            _this.OnCategoryChanged();
+        };
+        this.zCategoryChanged = new SimpleEvent_1.SimpleEvent();
+        this.zGeometry = new three_1.Geometry();
+        this.MiniatureGeometry = Application_1.Application.Miniature.Geometry;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.IsDisposed = false;
+        this.Selector = selector;
+        this.ID = id;
+        this.Name = name;
+        this.Description = description;
+        this.Category = category;
+        this.VisualSpecification = visualSpecification;
+    }
+    Object.defineProperty(SurfaceAnnotation.prototype, "Selector", {
+        get: function () {
+            return this.zSelector;
+        },
+        set: function (v) {
+            if (this.zSelector) {
+                this.zSelector.Changed.Unsubscribe(this.SelectorChangedHandler);
+            }
+            this.zSelector = v;
+            if (this.zSelector) {
+                this.zSelector.Changed.Subscribe(this.SelectorChangedHandler);
+                this.OnSelectorChanged();
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotation.prototype, "SelectorChanged", {
+        get: function () {
+            return this.zSelectorChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotation.prototype.OnSelectorChanged = function () {
+        this.UpdateGeometry();
+        this.zSelectorChanged.Dispatch(this.zSelector);
+    };
+    Object.defineProperty(SurfaceAnnotation.prototype, "VisualSpecification", {
+        get: function () {
+            return this.zVisualSpecification;
+        },
+        set: function (v) {
+            if (null !== this.zVisualSpecification) {
+                this.zVisualSpecification.Changed.Unsubscribe(this.VisualSpecificationChangedHandler);
+            }
+            this.zVisualSpecification = v;
+            this.zVisualSpecification.Changed.Subscribe(this.VisualSpecificationChangedHandler);
+            this.OnVisualSpecificationChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotation.prototype, "VisualSpecificationChanged", {
+        get: function () {
+            return this.zVisualSpecificationChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotation.prototype.OnVisualSpecificationChanged = function () {
+        this.zVisualSpecificationChanged.Dispatch(this.zVisualSpecification);
+    };
+    Object.defineProperty(SurfaceAnnotation.prototype, "Category", {
+        get: function () {
+            return this.zCategory;
+        },
+        set: function (v) {
+            if (null !== this.zCategory) {
+                this.zCategory.Changed.Unsubscribe(this.CategoryChangedHandler);
+            }
+            this.zCategory = v;
+            if (null !== this.zCategory) {
+                this.zCategory.Changed.Subscribe(this.CategoryChangedHandler);
+            }
+            this.OnCategoryChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotation.prototype, "CategoryChanged", {
+        get: function () {
+            return this.zCategoryChanged.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotation.prototype.OnCategoryChanged = function () {
+        this.zCategoryChanged.Dispatch(this.Category);
+    };
+    Object.defineProperty(SurfaceAnnotation.prototype, "Geometry", {
+        get: function () {
+            return this.zGeometry;
+        },
+        set: function (v) {
+            this.zGeometry = v;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotation.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotation.prototype.Dispose = function () {
+        if (!this.IsDisposed) {
+            this.Geometry.dispose();
+            this.zDisposed.Dispatch();
+            this.IsDisposed = true;
+        }
+    };
+    /**
+     * Updates the surface annotation's geometry based on what vertices of the miniature are selected by the annotation's surface selector.
+     *
+     * If any vertex of a face is included by the surface selector, the entire face is included. This could change, or be a specified option.
+     */
+    SurfaceAnnotation.prototype.UpdateGeometry = function () {
+        var _this = this;
+        this.ResetGeometry();
+        var nValuesPerVertex = 3;
+        var nVerticesPerFace = 3;
+        var values = this.MiniatureGeometry.getAttribute('position').array;
+        var nVertices = values.length / nValuesPerVertex;
+        var nFaces = nVertices / nVerticesPerFace;
+        // Determine which faces have at least one vertex that should be included in the surface sub-section.
+        var transformationMatrix = Application_1.Application.PreferredCoordinateSystem.Value.GetTransformationMatrix();
+        var includedFaces = [];
+        for (var iFace = 0; iFace < nFaces; iFace++) {
+            var faceStartIndex = iFace * nValuesPerVertex * nVerticesPerFace;
+            var includeFace = false;
+            for (var iVertex = 0; iVertex < nVerticesPerFace; iVertex++) {
+                var vertexStartIndex = faceStartIndex + iVertex * nVerticesPerFace;
+                var x = values[vertexStartIndex + 0];
+                var y = values[vertexStartIndex + 1];
+                var z = values[vertexStartIndex + 2];
+                // Transform standard coordinate system points into the preferred coordinate system. This adds processing time, but so far, is reasonable in time.
+                // Time might be saved by altering the selectors to work in the standard coordinate system.
+                var point = new three_1.Vector3(x, y, z);
+                point.applyMatrix4(transformationMatrix);
+                var includeVertex = this.zSelector.IncludePoint(point.x, point.y, point.z);
+                if (includeVertex) {
+                    includeFace = true;
+                    break; // Stop if any vertex is included.
+                }
+            }
+            if (includeFace) {
+                includedFaces.push(iFace);
+            }
+        }
+        var iVertexIndex = 0;
+        includedFaces.forEach(function (faceIndex) {
+            var faceStartIndex = faceIndex * nValuesPerVertex * nVerticesPerFace;
+            for (var iVertex = 0; iVertex < nVerticesPerFace; iVertex++) {
+                var vertexStartIndex = faceStartIndex + iVertex * nVerticesPerFace;
+                var x = values[vertexStartIndex + 0];
+                var y = values[vertexStartIndex + 1];
+                var z = values[vertexStartIndex + 2];
+                var vertex = new three_1.Vector3(x, y, z);
+                _this.Geometry.vertices.push(vertex);
+            }
+            var face = new three_1.Face3(iVertexIndex + 0, iVertexIndex + 1, iVertexIndex + 2);
+            iVertexIndex += nVerticesPerFace;
+            _this.Geometry.faces.push(face);
+        });
+        // Post-build required geometry updates.
+        this.Geometry.computeBoundingSphere();
+        this.Geometry.elementsNeedUpdate = true;
+    };
+    /**
+     * Resets the geometry object to have no faces and no vertices.
+     */
+    SurfaceAnnotation.prototype.ResetGeometry = function () {
+        this.Geometry.faces.splice(0);
+        this.Geometry.vertices.splice(0);
+    };
+    SurfaceAnnotation.prototype.ToObject = function () {
+        var categoryID = null !== this.Category ? this.Category.ID : Category_1.Category.DummyCategoryID;
+        var output = {
+            ID: this.ID,
+            Name: this.Name,
+            Description: this.Description,
+            Selector: SurfaceSelectorLocalStorageManager_1.SurfaceSelectorLocalStorageManager.ToObject(this.Selector),
+            Visuals: this.VisualSpecification.ToObject(),
+            CategoryID: categoryID,
+            Geometry: GeometryLocalStorageManager_1.GeometryLocalStorageManager.ToObject(this.Geometry),
+        };
+        return output;
+    };
+    SurfaceAnnotation.prototype.FromObject = function (obj) {
+        this.ID = obj.ID;
+        this.Name = obj.Name;
+        this.Description = obj.Description;
+        this.Selector = SurfaceSelectorLocalStorageManager_1.SurfaceSelectorLocalStorageManager.ToSurfaceSelector(obj.Selector);
+        this.VisualSpecification.FromObject(obj.Visuals);
+        if (Category_1.Category.DummyCategoryID !== obj.CategoryID) {
+            this.Category = Application_1.Application.CategoryManager.GetCategoryByID(obj.CategoryID);
+        }
+        this.Geometry = GeometryLocalStorageManager_1.GeometryLocalStorageManager.ToGeometry(obj.Geometry);
+        // this.Geometry.computeBoundingSphere();
+        this.Geometry.elementsNeedUpdate = true;
+    };
+    return SurfaceAnnotation;
+}());
+exports.SurfaceAnnotation = SurfaceAnnotation;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SurfaceAnnotationVisual.js":
+/*!*******************************************************!*\
+  !*** ./src/ts/Annotations/SurfaceAnnotationVisual.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+var SurfaceAnnotationVisual = /** @class */ (function () {
+    function SurfaceAnnotationVisual(annotation) {
+        var _this = this;
+        this.zVisualSpecification = null;
+        this.IsDisposed = false;
+        this.AnnotationCategoryChangedHandler = function () {
+            _this.SetVisualSpecification();
+        };
+        this.VisualSpecificationChangedHandler = function () {
+            var color = _this.VisualSpecification.Color;
+            _this.Material.color.setRGB(color.R, color.G, color.B);
+            _this.Material.opacity = _this.VisualSpecification.Transparency;
+        };
+        this.AnnotationDisposedHandler = function () {
+            _this.Dispose();
+        };
+        this.zAnnotation = annotation;
+        this.Material = new three_1.MeshBasicMaterial();
+        this.Material.side = three_1.DoubleSide;
+        this.Material.transparent = true; // This allows the opacity to be controlled.
+        this.Mesh = new three_1.Mesh(this.zAnnotation.Geometry, this.Material);
+        this.Object = new three_1.Group();
+        this.Object.children.push(this.Mesh);
+        Application_1.Application.Theater.Scene.add(this.Object);
+        this.Mesh.applyMatrix(Application_1.Application.PreferredCoordinateSystem.Value.GetTransformationMatrix());
+        this.ConnectEvents();
+    }
+    Object.defineProperty(SurfaceAnnotationVisual.prototype, "Annotation", {
+        get: function () {
+            return this.zAnnotation;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotationVisual.prototype, "VisualSpecification", {
+        get: function () {
+            return this.zVisualSpecification;
+        },
+        set: function (v) {
+            if (null !== this.zVisualSpecification) {
+                this.zVisualSpecification.Changed.Unsubscribe(this.VisualSpecificationChangedHandler);
+            }
+            this.zVisualSpecification = v;
+            this.zVisualSpecification.Changed.Subscribe(this.VisualSpecificationChangedHandler);
+            this.OnVisualSpecificationChanged();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotationVisual.prototype.OnVisualSpecificationChanged = function () {
+        this.VisualSpecificationChangedHandler();
+    };
+    SurfaceAnnotationVisual.prototype.Dispose = function () {
+        if (!this.IsDisposed) {
+            Application_1.Application.Theater.Scene.remove(this.Object);
+            this.Material.dispose();
+            this.DisconnectEvents();
+            this.IsDisposed = true;
+        }
+    };
+    SurfaceAnnotationVisual.prototype.ConnectEvents = function () {
+        this.zAnnotation.CategoryChanged.Subscribe(this.AnnotationCategoryChangedHandler);
+        this.zAnnotation.Disposed.Subscribe(this.AnnotationDisposedHandler);
+        this.SetVisualSpecification();
+    };
+    SurfaceAnnotationVisual.prototype.DisconnectEvents = function () {
+        this.zAnnotation.CategoryChanged.Unsubscribe(this.AnnotationCategoryChangedHandler);
+        this.zAnnotation.Disposed.Unsubscribe(this.AnnotationDisposedHandler);
+        if (null !== this.zVisualSpecification) {
+            this.zVisualSpecification.Changed.Unsubscribe(this.VisualSpecificationChangedHandler);
+        }
+    };
+    SurfaceAnnotationVisual.prototype.SetVisualSpecification = function () {
+        if (null === this.Annotation.Category) {
+            this.VisualSpecification = this.Annotation.VisualSpecification;
+        }
+        else {
+            this.VisualSpecification = this.Annotation.Category.Visuals;
+        }
+    };
+    /**
+     * Hides, but does not dispose of, a visual.
+     */
+    SurfaceAnnotationVisual.prototype.Hide = function () {
+        this.Object.visible = false;
+    };
+    /**
+     * Shows a visual that may have been hidden.
+     */
+    SurfaceAnnotationVisual.prototype.Show = function () {
+        this.Object.visible = true;
+    };
+    return SurfaceAnnotationVisual;
+}());
+exports.SurfaceAnnotationVisual = SurfaceAnnotationVisual;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SurfaceSelectorFactory.js":
+/*!******************************************************!*\
+  !*** ./src/ts/Annotations/SurfaceSelectorFactory.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var BoxSurfaceSelector_1 = __webpack_require__(/*! ./BoxSurfaceSelector */ "./src/ts/Annotations/BoxSurfaceSelector.js");
+var SphereSurfaceSelector_1 = __webpack_require__(/*! ./SphereSurfaceSelector */ "./src/ts/Annotations/SphereSurfaceSelector.js");
+var SurfaceSelectorFactory = /** @class */ (function () {
+    function SurfaceSelectorFactory() {
+    }
+    SurfaceSelectorFactory.prototype.Construct = function (surfaceSelectorTypeID) {
+        var output;
+        switch (surfaceSelectorTypeID) {
+            case BoxSurfaceSelector_1.BoxSurfaceSelector.SurfaceSelectorTypeID:
+                output = new BoxSurfaceSelector_1.BoxSurfaceSelector();
+                break;
+            case SphereSurfaceSelector_1.SphereSurfaceSelector.SurfaceSelectorTypeID:
+                output = new SphereSurfaceSelector_1.SphereSurfaceSelector();
+                break;
+        }
+        return output;
+    };
+    return SurfaceSelectorFactory;
+}());
+exports.SurfaceSelectorFactory = SurfaceSelectorFactory;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SurfaceSelectorLocalStorageManager.js":
+/*!******************************************************************!*\
+  !*** ./src/ts/Annotations/SurfaceSelectorLocalStorageManager.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var BoxSurfaceSelector_1 = __webpack_require__(/*! ./BoxSurfaceSelector */ "./src/ts/Annotations/BoxSurfaceSelector.js");
+var SphereSurfaceSelector_1 = __webpack_require__(/*! ./SphereSurfaceSelector */ "./src/ts/Annotations/SphereSurfaceSelector.js");
+var Vector3Storage_1 = __webpack_require__(/*! ../Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
+/**
+ * Handles conversion to/from JSON format objects.
+ */
+var SurfaceSelectorLocalStorageManager = /** @class */ (function () {
+    function SurfaceSelectorLocalStorageManager() {
+    }
+    SurfaceSelectorLocalStorageManager.IsBoxStorage = function (obj) {
+        return obj.SurfaceSelectorTypeID === BoxSurfaceSelector_1.BoxSurfaceSelector.SurfaceSelectorTypeID;
+    };
+    SurfaceSelectorLocalStorageManager.IsSphereStorage = function (obj) {
+        return obj.SurfaceSelectorTypeID === SphereSurfaceSelector_1.SphereSurfaceSelector.SurfaceSelectorTypeID;
+    };
+    SurfaceSelectorLocalStorageManager.ToObject = function (surfaceSelector) {
+        if (surfaceSelector instanceof BoxSurfaceSelector_1.BoxSurfaceSelector) {
+            var corner1 = Vector3Storage_1.Vector3Storage.ToObjFromVector3(surfaceSelector.Corner1);
+            var corner2 = Vector3Storage_1.Vector3Storage.ToObjFromVector3(surfaceSelector.Corner2);
+            var output = {
+                SurfaceSelectorTypeID: BoxSurfaceSelector_1.BoxSurfaceSelector.SurfaceSelectorTypeID,
+                Corner1: corner1,
+                Corner2: corner2,
+            };
+            return output;
+        }
+        if (surfaceSelector instanceof SphereSurfaceSelector_1.SphereSurfaceSelector) {
+            var center = Vector3Storage_1.Vector3Storage.ToObjFromVector3(surfaceSelector.Center);
+            var output = {
+                SurfaceSelectorTypeID: SphereSurfaceSelector_1.SphereSurfaceSelector.SurfaceSelectorTypeID,
+                Center: center,
+                Radius: surfaceSelector.Radius,
+            };
+            return output;
+        }
+        console.error('Unknown surface selector type.');
+    };
+    SurfaceSelectorLocalStorageManager.ToSurfaceSelector = function (obj) {
+        if (SurfaceSelectorLocalStorageManager.IsBoxStorage(obj)) {
+            var corner1 = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Corner1);
+            var corner2 = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Corner2);
+            var output = new BoxSurfaceSelector_1.BoxSurfaceSelector(corner1, corner2);
+            return output;
+        }
+        if (SurfaceSelectorLocalStorageManager.IsSphereStorage(obj)) {
+            var center = Vector3Storage_1.Vector3Storage.ToVector3FromObj(obj.Center);
+            var radius = obj.Radius;
+            var output = new SphereSurfaceSelector_1.SphereSurfaceSelector(center, radius);
+            return output;
+        }
+        console.error('Unknown surface selector type.');
+    };
+    return SurfaceSelectorLocalStorageManager;
+}());
+exports.SurfaceSelectorLocalStorageManager = SurfaceSelectorLocalStorageManager;
+
+
+/***/ }),
+
+/***/ "./src/ts/Annotations/SurfaceSelectorVisualFactory.js":
+/*!************************************************************!*\
+  !*** ./src/ts/Annotations/SurfaceSelectorVisualFactory.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var BoxSurfaceSelectorVisual_1 = __webpack_require__(/*! ./BoxSurfaceSelectorVisual */ "./src/ts/Annotations/BoxSurfaceSelectorVisual.js");
+var SphereSurfaceSelectorVisual_1 = __webpack_require__(/*! ./SphereSurfaceSelectorVisual */ "./src/ts/Annotations/SphereSurfaceSelectorVisual.js");
+var BoxSurfaceSelector_1 = __webpack_require__(/*! ./BoxSurfaceSelector */ "./src/ts/Annotations/BoxSurfaceSelector.js");
+var SphereSurfaceSelector_1 = __webpack_require__(/*! ./SphereSurfaceSelector */ "./src/ts/Annotations/SphereSurfaceSelector.js");
+var SurfaceSelectorVisualFactory = /** @class */ (function () {
+    function SurfaceSelectorVisualFactory(controlPanel) {
+        this.ControlPanel = controlPanel;
+    }
+    SurfaceSelectorVisualFactory.prototype.Construct = function (selector) {
+        if (BoxSurfaceSelector_1.BoxSurfaceSelector.IsBoxSurfaceSelector(selector)) {
+            var output = new BoxSurfaceSelectorVisual_1.BoxSurfaceSelectorVisual(selector, this.ControlPanel);
+            return output;
+        }
+        if (SphereSurfaceSelector_1.SphereSurfaceSelector.IsSphereSurfaceSelector(selector)) {
+            var output = new SphereSurfaceSelectorVisual_1.SphereSurfaceSelectorVisual(selector, this.ControlPanel);
+            return output;
+        }
+        console.error('Unrecognized surface selector.');
+    };
+    return SurfaceSelectorVisualFactory;
+}());
+exports.SurfaceSelectorVisualFactory = SurfaceSelectorVisualFactory;
+
+
+/***/ }),
+
 /***/ "./src/ts/Application.js":
 /*!*******************************!*\
   !*** ./src/ts/Application.js ***!
@@ -53076,7 +54280,6 @@ var LocalStorageManager_1 = __webpack_require__(/*! ./LocalStorageManager */ "./
 var SetPreferredCoordinateSystemMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCoordinateSystemMode */ "./src/ts/Modes/SetPreferredCoordinateSystemMode.js");
 var SetPreferredCameraSpecificationMode_1 = __webpack_require__(/*! ./Modes/SetPreferredCameraSpecificationMode */ "./src/ts/Modes/SetPreferredCameraSpecificationMode.js");
 var SetLightsMode_1 = __webpack_require__(/*! ./Modes/SetLightsMode */ "./src/ts/Modes/SetLightsMode.js");
-var PointAnnotationMode_1 = __webpack_require__(/*! ./Modes/PointAnnotationMode */ "./src/ts/Modes/PointAnnotationMode.js");
 var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var CategoriesManager_1 = __webpack_require__(/*! ./Annotations/CategoriesManager */ "./src/ts/Annotations/CategoriesManager.js");
 var CategoryManagementMode_1 = __webpack_require__(/*! ./Modes/CategoryManagementMode */ "./src/ts/Modes/CategoryManagementMode.js");
@@ -53086,6 +54289,7 @@ var PointAnnotation_1 = __webpack_require__(/*! ./Annotations/PointAnnotation */
 var EventedArray_1 = __webpack_require__(/*! ./Common/EventedArray */ "./src/ts/Common/EventedArray.js");
 var Vector3My_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
 var EventTester_1 = __webpack_require__(/*! ./Common/Events/EventTester */ "./src/ts/Common/Events/EventTester.js");
+var SurfaceAnnotationMode_1 = __webpack_require__(/*! ./Modes/SurfaceAnnotationMode */ "./src/ts/Modes/SurfaceAnnotationMode.js");
 var Application = /** @class */ (function () {
     function Application() {
     }
@@ -53111,8 +54315,10 @@ var Application = /** @class */ (function () {
     Application.ApplyPreferredCoordinateSystem = function () {
         Application.Theater.Axes.position.set(0, 0, 0);
         Application.Theater.Axes.rotation.set(0, 0, 0);
-        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
-        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
+        // Not sure I want to remove this yet.
+        // Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
+        // Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
+        Application.Miniature.Mesh.applyMatrix(Application.PreferredCoordinateSystem.Value.GetTransformationMatrix());
     };
     Application.MiniatureLoadingFinishedHandler = function () {
         LoadingBlocker_1.LoadingBlocker.Hide();
@@ -53191,7 +54397,7 @@ var Application = /** @class */ (function () {
         }
         // TEMP: Start in a specific mode.
         tour.AddStep(function () {
-            Application.ModesControl.SetCurrentModeByID(PointAnnotationMode_1.PointAnnotationMode.ID);
+            Application.ModesControl.SetCurrentModeByID(SurfaceAnnotationMode_1.SurfaceAnnotationMode.ID);
             // No next step.
         });
         // Start the tour!
@@ -53444,6 +54650,53 @@ exports.CameraSpecification = CameraSpecification;
 
 /***/ }),
 
+/***/ "./src/ts/Classes/Box3My.js":
+/*!**********************************!*\
+  !*** ./src/ts/Classes/Box3My.js ***!
+  \**********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var Box3My = /** @class */ (function () {
+    function Box3My(xMin, xMax, yMin, yMax, zMin, zMax) {
+        if (xMin === void 0) { xMin = Number.MAX_VALUE; }
+        if (xMax === void 0) { xMax = Number.MIN_VALUE; }
+        if (yMin === void 0) { yMin = Number.MAX_VALUE; }
+        if (yMax === void 0) { yMax = Number.MIN_VALUE; }
+        if (zMin === void 0) { zMin = Number.MAX_VALUE; }
+        if (zMax === void 0) { zMax = Number.MIN_VALUE; }
+        this.xMin = xMin;
+        this.xMax = xMax;
+        this.yMin = yMin;
+        this.yMax = yMax;
+        this.zMin = zMin;
+        this.zMax = zMax;
+    }
+    Box3My.prototype.Update = function (x1, x2, y1, y2, z1, z2) {
+        this.xMax = x1 > x2 ? x1 : x2;
+        this.xMin = x1 < x2 ? x1 : x2;
+        this.yMax = y1 > y2 ? y1 : y2;
+        this.yMin = y1 < y2 ? y1 : y2;
+        this.zMax = z1 > z2 ? z1 : z2;
+        this.zMin = z1 < z2 ? z1 : z2;
+    };
+    Box3My.prototype.Contains = function (x, y, z) {
+        var withinX = x >= this.xMin && x <= this.xMax;
+        var withinY = y >= this.yMin && y <= this.yMax;
+        var withinZ = z >= this.zMin && z <= this.zMax;
+        var output = withinX && withinY && withinZ;
+        return output;
+    };
+    return Box3My;
+}());
+exports.Box3My = Box3My;
+
+
+/***/ }),
+
 /***/ "./src/ts/Classes/Colors/ColorRgb.js":
 /*!*******************************************!*\
   !*** ./src/ts/Classes/Colors/ColorRgb.js ***!
@@ -53536,6 +54789,79 @@ exports.ColorRgb = ColorRgb;
 
 /***/ }),
 
+/***/ "./src/ts/Classes/GeometryLocalStorageManager.js":
+/*!*******************************************************!*\
+  !*** ./src/ts/Classes/GeometryLocalStorageManager.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
+/**
+ * Handles conversion to/from JSON format objects.
+ */
+var GeometryLocalStorageManager = /** @class */ (function () {
+    function GeometryLocalStorageManager() {
+    }
+    GeometryLocalStorageManager.ToObject = function (geometry) {
+        var nVertices = geometry.vertices.length;
+        var nFaces = geometry.faces.length;
+        var vertexElements = [];
+        for (var iVertex = 0; iVertex < nVertices; iVertex++) {
+            var vertex = geometry.vertices[iVertex];
+            vertexElements.push(vertex.x);
+            vertexElements.push(vertex.y);
+            vertexElements.push(vertex.z);
+        }
+        var faceElements = [];
+        for (var iFace = 0; iFace < nFaces; iFace++) {
+            var face = geometry.faces[iFace];
+            faceElements.push(face.a);
+            faceElements.push(face.b);
+            faceElements.push(face.c);
+        }
+        var output = {
+            NVertices: nVertices,
+            NFaces: nFaces,
+            VertexElements: vertexElements,
+            FaceElements: faceElements,
+        };
+        return output;
+    };
+    GeometryLocalStorageManager.ToGeometry = function (obj) {
+        var geometry = new three_1.Geometry();
+        var nVertices = obj.NVertices;
+        var vertexElementIndex = 0;
+        for (var iVertex = 0; iVertex < nVertices; iVertex++) {
+            var x = obj.VertexElements[vertexElementIndex++];
+            var y = obj.VertexElements[vertexElementIndex++];
+            var z = obj.VertexElements[vertexElementIndex++];
+            var vertex = new three_1.Vector3(x, y, z);
+            geometry.vertices.push(vertex);
+        }
+        var nFaces = obj.NFaces;
+        var faceElementIndex = 0;
+        for (var iFace = 0; iFace < nFaces; iFace++) {
+            var a = obj.FaceElements[faceElementIndex++];
+            var b = obj.FaceElements[faceElementIndex++];
+            var c = obj.FaceElements[faceElementIndex++];
+            var face = new three_1.Face3(a, b, c);
+            geometry.faces.push(face);
+        }
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        return geometry;
+    };
+    return GeometryLocalStorageManager;
+}());
+exports.GeometryLocalStorageManager = GeometryLocalStorageManager;
+
+
+/***/ }),
+
 /***/ "./src/ts/Classes/PointVisualsManager.js":
 /*!***********************************************!*\
   !*** ./src/ts/Classes/PointVisualsManager.js ***!
@@ -53567,9 +54893,9 @@ var PointVisualsManager = /** @class */ (function () {
         this.Geometry = new three_1.SphereGeometry(1);
         this.Material = new three_1.MeshBasicMaterial({ color: 0x0000ff });
         this.Material.transparent = true; // This allows the opacity to be controlled.
-        this.Mesh = new three_1.Mesh(this.Geometry, this.Material);
-        Application_1.Application.PointMeshes.Add(this.Mesh);
-        Application_1.Application.Theater.Scene.add(this.Mesh);
+        this.zMesh = new three_1.Mesh(this.Geometry, this.Material);
+        Application_1.Application.PointMeshes.Add(this.zMesh);
+        Application_1.Application.Theater.Scene.add(this.zMesh);
         // Listen for updates to the point annotation.
         this.zPointAnnotation.CategoryChanged.Subscribe(this.CategoryChangedHandler);
         this.zPointAnnotation.StandardLocationChanged.Subscribe(this.StandardLocationChangedHandler);
@@ -53584,10 +54910,17 @@ var PointVisualsManager = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(PointVisualsManager.prototype, "Mesh", {
+        get: function () {
+            return this.zMesh;
+        },
+        enumerable: true,
+        configurable: true
+    });
     PointVisualsManager.prototype.Dispose = function () {
         this.zPointAnnotation.CategoryChanged.Unsubscribe(this.CategoryChangedHandler);
         this.zPointAnnotation.StandardLocationChanged.Unsubscribe(this.StandardLocationChangedHandler);
-        Application_1.Application.Theater.Scene.remove(this.Mesh);
+        Application_1.Application.Theater.Scene.remove(this.zMesh);
         this.Geometry.dispose(); // From: https://github.com/mrdoob/three.js/blob/master/examples/webgl_test_memory.html
         this.Material.dispose();
     };
@@ -53595,7 +54928,7 @@ var PointVisualsManager = /** @class */ (function () {
         // Position the visual mesh.
         var standardPosition = this.zPointAnnotation.StandardLocation.ToVector3();
         var preferredPosition = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPosition, Application_1.Application.PreferredCoordinateSystem.Value);
-        this.Mesh.position.copy(preferredPosition);
+        this.zMesh.position.copy(preferredPosition);
     };
     /**
      * If the point annotation has a non-null category, use the category's visuals. Else, use the point-annotation's own visuals.
@@ -53618,7 +54951,7 @@ var PointVisualsManager = /** @class */ (function () {
         this.Material.color.r = this.Visuals.Color.R;
         this.Material.color.g = this.Visuals.Color.G;
         this.Material.color.b = this.Visuals.Color.B;
-        this.Mesh.scale.set(this.Visuals.Size, this.Visuals.Size, this.Visuals.Size);
+        this.zMesh.scale.set(this.Visuals.Size, this.Visuals.Size, this.Visuals.Size);
         this.Material.opacity = this.Visuals.Transparency;
     };
     return PointVisualsManager;
@@ -53963,6 +55296,7 @@ var EditorBox = /** @class */ (function () {
         this.Style.remove();
         var result = new EditorBoxResult(action, this.zInstance);
         this.zClosed.Dispatch(result);
+        this.IsDisposed = true;
     };
     /**
      * Allow clients to programmatically close the editor specifying whether to accept or cancel changes.
@@ -55417,6 +56751,7 @@ var SetLightsMode_1 = __webpack_require__(/*! ../Modes/SetLightsMode */ "./src/t
 var PointMode_1 = __webpack_require__(/*! ../Modes/PointMode */ "./src/ts/Modes/PointMode.js");
 var PointAnnotationMode_1 = __webpack_require__(/*! ../Modes/PointAnnotationMode */ "./src/ts/Modes/PointAnnotationMode.js");
 var CategoryManagementMode_1 = __webpack_require__(/*! ../Modes/CategoryManagementMode */ "./src/ts/Modes/CategoryManagementMode.js");
+var SurfaceAnnotationMode_1 = __webpack_require__(/*! ../Modes/SurfaceAnnotationMode */ "./src/ts/Modes/SurfaceAnnotationMode.js");
 // Allows choosing which mode will put its controls to the control panel.
 // The ModesControl should always be first in the Control Panel.
 var ModesControl = /** @class */ (function () {
@@ -55522,6 +56857,7 @@ var ModesControl = /** @class */ (function () {
         new Mode_1.ModeInfo(PointMode_1.PointMode.ID, 'Point Mode'),
         new Mode_1.ModeInfo(PointAnnotationMode_1.PointAnnotationMode.ID, 'Point Annotation'),
         new Mode_1.ModeInfo(CategoryManagementMode_1.CategoryManagementMode.ID, 'Categories'),
+        new Mode_1.ModeInfo(SurfaceAnnotationMode_1.SurfaceAnnotationMode.ID, 'Surface Annotation'),
     ];
     return ModesControl;
 }());
@@ -56343,9 +57679,37 @@ var CategoriesManager_1 = __webpack_require__(/*! ./Annotations/CategoriesManage
 var IdentifiedManager_1 = __webpack_require__(/*! ./Common/IdentifiedManager */ "./src/ts/Common/IdentifiedManager.js");
 var PointAnnotation_1 = __webpack_require__(/*! ./Annotations/PointAnnotation */ "./src/ts/Annotations/PointAnnotation.js");
 var Vector3Storage_1 = __webpack_require__(/*! ./Classes/Vectors/Vector3Storage */ "./src/ts/Classes/Vectors/Vector3Storage.js");
+var SurfaceAnnotation_1 = __webpack_require__(/*! ./Annotations/SurfaceAnnotation */ "./src/ts/Annotations/SurfaceAnnotation.js");
 var LocalStorageManager = /** @class */ (function () {
     function LocalStorageManager() {
     }
+    LocalStorageManager.SurfaceAnnotationsExist = function () {
+        var output = LocalStorageManager.SurfaceAnnotationsName in localStorage;
+        return output;
+    };
+    LocalStorageManager.LoadSurfaceAnnotations = function () {
+        var exists = LocalStorageManager.SurfaceAnnotationsExist();
+        if (!exists) {
+            return null;
+        }
+        var json = localStorage.getItem(LocalStorageManager.SurfaceAnnotationsName);
+        var objs = JSON.parse(json);
+        var output = new IdentifiedManager_1.IdentifiedManager();
+        output.FromObject(objs, function (obj) {
+            var output = new SurfaceAnnotation_1.SurfaceAnnotation();
+            output.FromObject(obj);
+            return output;
+        });
+        return output;
+    };
+    LocalStorageManager.SaveSurfaceAnnotations = function (surfaceAnnotations) {
+        var obj = surfaceAnnotations.ToObject(function (value) {
+            var obj = value.ToObject();
+            return obj;
+        });
+        var json = JSON.stringify(obj);
+        localStorage.setItem(LocalStorageManager.SurfaceAnnotationsName, json);
+    };
     LocalStorageManager.PointAnnotationsExist = function () {
         var output = LocalStorageManager.PointAnnotationsName in localStorage;
         return output;
@@ -56488,6 +57852,7 @@ var LocalStorageManager = /** @class */ (function () {
     LocalStorageManager.LightingSpecificationName = 'LightingSpecification';
     LocalStorageManager.CategoriesName = 'Categories';
     LocalStorageManager.PointAnnotationsName = 'Point Annotations';
+    LocalStorageManager.SurfaceAnnotationsName = 'Surface Annotations';
     return LocalStorageManager;
 }());
 exports.LocalStorageManager = LocalStorageManager;
@@ -56508,6 +57873,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var THREE = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 __webpack_require__(/*! three/MTLLoader */ "./node_modules/three/examples/js/loaders/MTLLoader.js");
 __webpack_require__(/*! three/OBJLoader */ "./node_modules/three/examples/js/loaders/OBJLoader.js");
+var Application_1 = __webpack_require__(/*! ./Application */ "./src/ts/Application.js");
 var Miniature = /** @class */ (function () {
     function Miniature(theater, path, objFileName, mtlFileName, loadingProgressHandler, loadingErrorHandler, loadingFinishedHandler) {
         if (loadingProgressHandler === void 0) { loadingProgressHandler = Miniature.DefaultLoadingProgressHandler; }
@@ -56559,9 +57925,14 @@ var Miniature = /** @class */ (function () {
         this.Radius = this.Geometry.boundingSphere.radius;
         this.Center.copy(this.Geometry.boundingSphere.center);
         this.Geometry.computeBoundingBox();
+        // // For debugging.
+        // this.AddCopyAtInitialLocation();
         loadingFinishedHandler();
-        // this.ComputeScaleAndOffset();
-        // this.PositionObject();
+    };
+    Miniature.prototype.AddCopyAtInitialLocation = function () {
+        var meshCopy = this.Object.children[0].clone();
+        meshCopy.visible = false;
+        Application_1.Application.Theater.Scene.add(meshCopy);
     };
     return Miniature;
 }());
@@ -57014,6 +58385,7 @@ var SetLightsMode_1 = __webpack_require__(/*! ./SetLightsMode */ "./src/ts/Modes
 var PointMode_1 = __webpack_require__(/*! ./PointMode */ "./src/ts/Modes/PointMode.js");
 var PointAnnotationMode_1 = __webpack_require__(/*! ./PointAnnotationMode */ "./src/ts/Modes/PointAnnotationMode.js");
 var CategoryManagementMode_1 = __webpack_require__(/*! ./CategoryManagementMode */ "./src/ts/Modes/CategoryManagementMode.js");
+var SurfaceAnnotationMode_1 = __webpack_require__(/*! ./SurfaceAnnotationMode */ "./src/ts/Modes/SurfaceAnnotationMode.js");
 var ModeFactory = /** @class */ (function () {
     function ModeFactory(controlPanel) {
         this.ControlPanel = controlPanel;
@@ -57044,6 +58416,9 @@ var ModeFactory = /** @class */ (function () {
                 break;
             case SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode.ID:
                 output = new SetPreferredCoordinateSystemMode_1.SetPreferredCoordinateSystemMode(this.ControlPanel);
+                break;
+            case SurfaceAnnotationMode_1.SurfaceAnnotationMode.ID:
+                output = new SurfaceAnnotationMode_1.SurfaceAnnotationMode(this.ControlPanel);
                 break;
             default:
                 console.warn('ModeFactory - No constructor for mode ID: ' + id);
@@ -57102,47 +58477,6 @@ exports.NoneMode = NoneMode;
 
 /***/ }),
 
-/***/ "./src/ts/Modes/PointAnnotationMode.css":
-/*!**********************************************!*\
-  !*** ./src/ts/Modes/PointAnnotationMode.css ***!
-  \**********************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-var content = __webpack_require__(/*! !../../../node_modules/css-loader!./PointAnnotationMode.css */ "./node_modules/css-loader/index.js!./src/ts/Modes/PointAnnotationMode.css");
-
-if(typeof content === 'string') content = [[module.i, content, '']];
-
-var transform;
-var insertInto;
-
-
-
-var options = {"hmr":true}
-
-options.transform = transform
-options.insertInto = undefined;
-
-var update = __webpack_require__(/*! ../../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
-
-if(content.locals) module.exports = content.locals;
-
-if(false) {}
-
-/***/ }),
-
-/***/ "./src/ts/Modes/PointAnnotationMode.html":
-/*!***********************************************!*\
-  !*** ./src/ts/Modes/PointAnnotationMode.html ***!
-  \***********************************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-module.exports = "<div>\r\n    <label>Name:\r\n        <abbr title=\"Name is required.\">*</abbr>\r\n    </label>\r\n    <input type=\"text\" id=\"PointAnnotations-EditorName\" placeholder=\"Name...\" required>\r\n</div>\r\n<div>\r\n    <label>Description:</label>\r\n    <textarea id=\"PointAnnotations-EditorDescription\" rows=\"3\"></textarea>\r\n</div>\r\n<div>\r\n    <label>Use Category?</label>\r\n    <input id=\"PointAnnotations-EditorUseCategory\" type=\"checkbox\">\r\n</div>\r\n<div>\r\n    <label>Category:</label>\r\n    <select id=\"PointAnnotations-EditorCategory\"></select>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>Visual Properties:</label>\r\n    <div>\r\n        <label>Color:</label>\r\n        <div id=\"PointAnnotations-EditorColor\"></div>\r\n        <label>Size:</label>\r\n        <input type=\"number\" id=\"PointAnnotations-EditorSize\" min=\"0\" max=\"10\" step=\"0.1\">\r\n        <br>\r\n        <label>Transparency:</label>\r\n        <input type=\"number\" id=\"PointAnnotations-EditorTransparency\" min=\"0\" max=\"1\" step=\"0.1\">\r\n    </div>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>Location:</label>\r\n    <br>\r\n    <label>Model:</label>\r\n    <p id=\"PointAnnotations-EditorModelLocation\"></p>\r\n    <br>\r\n    <label>Standard</label>\r\n    <p id=\"PointAnnotations-EditorStandardLocation\"></p>\r\n</div>\r\n<hr>\r\n<div>\r\n    <label>ID:</label>\r\n    <p id=\"PointAnnotations-EditorPointID\"></p>\r\n</div>";
-
-/***/ }),
-
 /***/ "./src/ts/Modes/PointAnnotationMode.js":
 /*!*********************************************!*\
   !*** ./src/ts/Modes/PointAnnotationMode.js ***!
@@ -57153,25 +58487,42 @@ module.exports = "<div>\r\n    <label>Name:\r\n        <abbr title=\"Name is req
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-var wDatGui = __webpack_require__(/*! dat.gui */ "./node_modules/dat.gui/build/dat.gui.module.js");
-var dat = wDatGui.default; // Workaround.
 var Application_1 = __webpack_require__(/*! ../Application */ "./src/ts/Application.js");
 var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
 var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
 var PointAnnotation_1 = __webpack_require__(/*! ../Annotations/PointAnnotation */ "./src/ts/Annotations/PointAnnotation.js");
 var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
-var EditorBox_1 = __webpack_require__(/*! ../Common/Boxes/EditorBox */ "./src/ts/Common/Boxes/EditorBox.js");
-var template = __webpack_require__(/*! ./PointAnnotationMode.html */ "./src/ts/Modes/PointAnnotationMode.html");
-__webpack_require__(/*! ./PointAnnotationMode.css */ "./src/ts/Modes/PointAnnotationMode.css");
 var CoordinateSystemConversion_1 = __webpack_require__(/*! ../CoordinateSystemConversion */ "./src/ts/CoordinateSystemConversion.js");
+var three_1 = __webpack_require__(/*! three */ "./node_modules/three/build/three.module.js");
 var Vector3My_1 = __webpack_require__(/*! ../Classes/Vectors/Vector3My */ "./src/ts/Classes/Vectors/Vector3My.js");
 var PointVisualsManager_1 = __webpack_require__(/*! ../Classes/PointVisualsManager */ "./src/ts/Classes/PointVisualsManager.js");
+var PointAnnotationEditorBox_1 = __webpack_require__(/*! ../Annotations/PointAnnotationEditorBox */ "./src/ts/Annotations/PointAnnotationEditorBox.js");
 var PointAnnotationMode = /** @class */ (function () {
     function PointAnnotationMode(controlPanel) {
         var _this = this;
         this.zDisposed = new SignalEvent_1.SignalEvent();
         this.Annotations = Application_1.Application.PointAnnotationsManager;
         this.AnnotationVisuals = new Array();
+        this.zSelectedAnnotation = null;
+        this.OnSelectChanged = function () {
+            // Get the selected option.
+            var option = _this.Select.childNodes[_this.Select.selectedIndex];
+            // If we have selected the none option, set the selected annotation to null.
+            if (PointAnnotationMode.DummyAnnotationID.toString() === option.value) {
+                _this.SelectedAnnotation = null;
+                return;
+            }
+            // Determine the point annotation from the ID.
+            var annotations = _this.Annotations.Values;
+            for (var iAnnotation = 0; iAnnotation < annotations.length; iAnnotation++) {
+                var annotation = annotations[iAnnotation];
+                if (annotation.ID.toString() === option.value) {
+                    _this.SelectedAnnotation = annotation;
+                    return;
+                }
+            }
+            console.error("Annotation " + option.value + "-" + option.innerHTML + " not found, but was selected via select dropdown.");
+        };
         this.LoadClick = function () {
             var loaded = LocalStorageManager_1.LocalStorageManager.LoadPointAnnotations();
             _this.Annotations.Copy(loaded);
@@ -57185,128 +58536,153 @@ var PointAnnotationMode = /** @class */ (function () {
             _this.Dispose(); // Dispose.
         };
         this.AddClick = function () {
-            // Application.Theater.Renderer.domElement.addEventListener("mousedown", (ev: MouseEvent) => this.OnWebGlOutputMouseDown(ev));
-            Application_1.Application.Theater.Renderer.domElement.addEventListener("mousedown", _this.OnWebGlOutputMouseDown);
-            var ID = _this.Annotations.GetNextID();
-            var annotation = new PointAnnotation_1.PointAnnotation(ID, 'Annotation ' + ID);
-            _this.Annotations.Add(annotation);
-            _this.FillSelect();
+            _this.SetupAddPointAnnotationMode();
         };
-        this.OnWebGlOutputMouseDown = function (ev) {
+        this.AddPointAnnotationModeKeyDown = function (event) {
+            switch (event.keyCode) {
+                case 27: // Escape
+                    _this.TeardownAddPointAnnotationMode();
+                    break;
+            }
+        };
+        this.AddPointWebGLOutputMouseDown = function (event) {
+            var camera = Application_1.Application.Theater.Camera;
+            var scene = Application_1.Application.Theater.Scene;
+            var vector = new three_1.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+            vector = vector.unproject(camera);
+            var raycaster = new three_1.Raycaster(camera.position, vector.sub(camera.position).normalize());
+            // Were any already added points hit?
+            var meshes = Application_1.Application.PointMeshes.Values;
+            var pointIntersects = raycaster.intersectObjects(meshes);
+            if (pointIntersects.length > 0) {
+                console.log('You hit an already existing point!');
+            }
+            else {
+                console.log('No points hit.');
+                // Add a point if we clicked anywhere on the miniature.
+                var miniatureIntersects = raycaster.intersectObjects(Application_1.Application.Miniature.Object.children);
+                if (0 < miniatureIntersects.length) {
+                    console.log('You hit the miniature.');
+                    var firstIntersect = miniatureIntersects[0];
+                    _this.AddAnnotation(firstIntersect.point);
+                    _this.TeardownAddPointAnnotationMode();
+                }
+                else {
+                    console.log('Miniature not hit.');
+                }
+            }
+        };
+        this.SelectClick = function () {
+            _this.SetupSelectPointAnnotationMode();
+        };
+        this.SelectPointAnnotationModeKeyDown = function (event) {
+            switch (event.keyCode) {
+                case 27: // Escape
+                    _this.TeardownSelectPointAnnotationMode();
+                    break;
+            }
+        };
+        this.SelectPointWebGLOutputMouseDown = function (event) {
+            var camera = Application_1.Application.Theater.Camera;
+            var scene = Application_1.Application.Theater.Scene;
+            var vector = new three_1.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+            vector = vector.unproject(camera);
+            var raycaster = new three_1.Raycaster(camera.position, vector.sub(camera.position).normalize());
+            // Were any already added points hit?
+            var meshes = Application_1.Application.PointMeshes.Values;
+            var pointIntersects = raycaster.intersectObjects(meshes);
+            if (pointIntersects.length > 0) {
+                console.log('You hit an already existing point!');
+                var firstIntersect = pointIntersects[0];
+                var selectedObject = firstIntersect.object;
+                // Get the annotation for the mesh, by first finding the PointVisualsManager for the selected mesh, then finding the PointAnnotation for the visuals.
+                var selectedAnnotationVisual = null;
+                for (var iVisual = 0; iVisual < _this.AnnotationVisuals.length; iVisual++) {
+                    var visual = _this.AnnotationVisuals[iVisual];
+                    if (visual.Mesh === selectedObject) {
+                        selectedAnnotationVisual = visual;
+                        break;
+                    }
+                }
+                if (null === selectedAnnotationVisual) {
+                    console.error('Unable to find point annotation visual for selected object.');
+                }
+                var annotations = _this.Annotations.Values;
+                var selectedAnnotation = null;
+                for (var iAnnotation = 0; iAnnotation < annotations.length; iAnnotation++) {
+                    var annotation = annotations[iAnnotation];
+                    if (annotation === selectedAnnotationVisual.PointAnnotation) {
+                        selectedAnnotation = annotation;
+                        break;
+                    }
+                }
+                if (null === selectedAnnotation) {
+                    console.error('Unable to find point annotation for selected point annotation visual.');
+                }
+                _this.SelectedAnnotation = selectedAnnotation;
+                _this.TeardownSelectPointAnnotationMode();
+            }
+            else {
+                console.log('No points hit.');
+            }
+        };
+        this.MoveClick = function () {
+            _this.SetupMoveMode();
+        };
+        this.MoveModeKeyDown = function (event) {
+            switch (event.keyCode) {
+                case 27: // Escape
+                    _this.TeardownMoveMode();
+                    break;
+            }
+        };
+        this.MoveModeWebGLOutputMouseDown = function (event) {
+            var camera = Application_1.Application.Theater.Camera;
+            var scene = Application_1.Application.Theater.Scene;
+            var vector = new three_1.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+            vector = vector.unproject(camera);
+            var raycaster = new three_1.Raycaster(camera.position, vector.sub(camera.position).normalize());
+            // Were any already added points hit?
+            var meshes = Application_1.Application.PointMeshes.Values;
+            var pointIntersects = raycaster.intersectObjects(meshes);
+            if (pointIntersects.length > 0) {
+                console.log('You hit an already existing point!');
+            }
+            else {
+                console.log('No points hit.');
+                // Add a point if we clicked anywhere on the miniature.
+                var miniatureIntersects = raycaster.intersectObjects(Application_1.Application.Miniature.Object.children);
+                if (0 < miniatureIntersects.length) {
+                    console.log('You hit the miniature.');
+                    var firstIntersect = miniatureIntersects[0];
+                    var preferredLocation = firstIntersect.point;
+                    var standardLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(preferredLocation, Application_1.Application.PreferredCoordinateSystem.Value);
+                    _this.SelectedAnnotation.StandardLocation.FromVector3(standardLocation); // Visual location will update via events.
+                    _this.TeardownMoveMode();
+                }
+                else {
+                    console.log('Miniature not hit.');
+                }
+            }
         };
         this.EditClick = function () {
             var option = _this.Select.children[_this.Select.selectedIndex];
             var annotation = _this.Annotations.GetByIDString(option.value);
-            var instanceForEdit = annotation.Clone();
-            var editor = new EditorBox_1.EditorBox(instanceForEdit, 'Edit Point Annotation');
-            _this.Editor = editor;
-            editor.Closed.SubscribeOnce(_this.EditorClosed);
-            var editorBody = editor.BodyHtmlElement;
-            var body = document.createElement('div');
-            editorBody.appendChild(body);
-            body.id = PointAnnotationMode.EditorBodyHtmlElementID;
-            body.innerHTML += template;
-            _this.EditorNameHtmlElement = document.getElementById(PointAnnotationMode.EditorNameHtmlElementID);
-            _this.EditorDescriptionHtmlElement = document.getElementById(PointAnnotationMode.EditorDescriptionHtmlElementID);
-            _this.EditorUseCategoryHtmlElement = document.getElementById(PointAnnotationMode.EditorUseCategoryHtmlElementID);
-            _this.EditorCategoryHtmlElement = document.getElementById(PointAnnotationMode.EditorCategoryHtmlElementID);
-            _this.EditorColorHtmlElement = document.getElementById(PointAnnotationMode.EditorColorHtmlElementID);
-            _this.EditorSizeHtmlElement = document.getElementById(PointAnnotationMode.EditorSizeHtmlElementID);
-            _this.EditorTransparencyHtmlElement = document.getElementById(PointAnnotationMode.EditorTransparencyHtmlElementID);
-            _this.EditorModelLocationHtmlElement = document.getElementById(PointAnnotationMode.EditorModelLocationHtmlElementID);
-            _this.EditorStandardLocationHtmlElement = document.getElementById(PointAnnotationMode.EditorStandardLocationHtmlElementID);
-            _this.EditorPointIDHtmlElement = document.getElementById(PointAnnotationMode.EditorPointIDHtmlElementID);
-            // Start off with the category disabled.
-            _this.EditorCategoryHtmlElement.disabled = true;
-            // All the categories into the select.
-            var categories = Application_1.Application.CategoryManager.Categories;
-            categories.forEach(function (category) {
-                var option = document.createElement('option');
-                option.value = category.ID.toString();
-                option.innerHTML = category.Name;
-                _this.EditorCategoryHtmlElement.appendChild(option);
-            }, _this);
-            // If the point annotation has a category, determine its index, and set the selected index. Note: makes use of the same ordering as categories were added above.
-            if (null !== instanceForEdit.Category) {
-                for (var iCategory = 0; iCategory < categories.length; iCategory++) {
-                    var category = categories[iCategory];
-                    if (category === instanceForEdit.Category) {
-                        _this.EditorCategoryHtmlElement.selectedIndex = iCategory;
-                        break;
-                    }
-                }
+            _this.EditAnnotationInEditor(annotation);
+        };
+        this.RemoveClick = function () {
+            var option = _this.Select.children[_this.Select.selectedIndex];
+            if (option.value !== PointAnnotationMode.DummyAnnotationID.toString()) {
+                var annotation = _this.Annotations.GetByIDString(option.value);
+                _this.Annotations.Remove(annotation);
+                _this.FillSelect();
             }
-            // The visuals color picker.
-            _this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
-            _this.EditorColorHtmlElement.appendChild(_this.EditorVisualsDatGUI.domElement);
-            var r = editor.Instance.Visuals.Color.R * 255;
-            var g = editor.Instance.Visuals.Color.G * 255;
-            var b = editor.Instance.Visuals.Color.B * 255;
-            var tempObj = { ColorValue: [r, g, b], };
-            var color = _this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
-            color.onChange(function () {
-                editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
-            });
-            // Set form values.
-            _this.EditorNameHtmlElement.value = instanceForEdit.Name;
-            _this.EditorDescriptionHtmlElement.value = instanceForEdit.Description;
-            var useCategory = null !== instanceForEdit.Category;
-            _this.EditorUseCategoryHtmlElement.checked = useCategory;
-            if (useCategory) {
-                _this.SetUseCategoryVisuals();
-            }
-            else {
-                _this.SetUseAnnotationVisuals();
-            }
-            _this.EditorSizeHtmlElement.value = instanceForEdit.Visuals.Size.toString();
-            _this.EditorTransparencyHtmlElement.value = instanceForEdit.Visuals.Transparency.toString();
-            _this.EditorStandardLocationHtmlElement.innerHTML = instanceForEdit.StandardLocation.ToString();
-            var standardLocation = instanceForEdit.StandardLocation.ToVector3();
-            var preferredLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointStandardToPreferred(standardLocation, Application_1.Application.PreferredCoordinateSystem.Value);
-            var pref = new Vector3My_1.Vector3My();
-            pref.FromVector3(preferredLocation);
-            _this.EditorModelLocationHtmlElement.innerHTML = pref.ToString();
-            _this.EditorPointIDHtmlElement.innerHTML = instanceForEdit.ID.toString();
-            // Update temporary instance in response to form changes.
-            _this.EditorNameHtmlElement.onchange = function () {
-                _this.Editor.Instance.Name = _this.EditorNameHtmlElement.value;
-            };
-            _this.EditorDescriptionHtmlElement.onchange = function () {
-                _this.Editor.Instance.Description = _this.EditorDescriptionHtmlElement.value;
-            };
-            _this.EditorUseCategoryHtmlElement.onchange = function () {
-                if (_this.EditorUseCategoryHtmlElement.checked) {
-                    _this.SetUseCategoryVisuals();
-                    _this.Editor.Instance.Category = _this.GetCategory(); // Set the category initially.
-                }
-                else {
-                    _this.SetUseAnnotationVisuals();
-                    _this.Editor.Instance.Category = null;
-                }
-            };
-            _this.EditorCategoryHtmlElement.onchange = function () {
-                _this.Editor.Instance.Category = _this.GetCategory();
-            };
-            _this.EditorSizeHtmlElement.onchange = function () {
-                _this.Editor.Instance.Visuals.Size = parseFloat(_this.EditorSizeHtmlElement.value);
-            };
-            _this.EditorTransparencyHtmlElement.onchange = function () {
-                _this.Editor.Instance.Visuals.Transparency = parseFloat(_this.EditorTransparencyHtmlElement.value);
-            };
-            editor.Show();
         };
         this.EditorClosed = function (result) {
             if (result.Action === 'Accept') {
                 var annotation = _this.Annotations.GetByID(result.Instance.ID);
                 annotation.Copy(result.Instance);
             }
-            _this.EditorVisualsDatGUI.destroy();
-            _this.FillSelect();
-        };
-        this.RemoveClick = function () {
-            var option = _this.Select.children[_this.Select.selectedIndex];
-            var annotation = _this.Annotations.GetByIDString(option.value);
-            _this.Annotations.Remove(annotation);
             _this.FillSelect();
         };
         // Setup controls.
@@ -57320,11 +58696,22 @@ var PointAnnotationMode = /** @class */ (function () {
         this.FinishedButton.Click.Subscribe(this.FinishedClick);
         this.SingularHtmlElement = controlPanel.CreateChildControlElement(PointAnnotationMode.SingularHtmlElementID);
         controlPanel.CreateChildControlTitle(this.SingularHtmlElement, 'Point Annotation');
+        this.AddButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Add');
+        this.AddButton.Click.Subscribe(this.AddClick);
+        var hr = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr);
         this.Select = document.createElement('select');
         this.SingularHtmlElement.appendChild(this.Select);
         this.FillSelect();
-        this.AddButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Add');
-        this.AddButton.Click.Subscribe(this.AddClick);
+        this.Select.onchange = this.OnSelectChanged;
+        var hr2 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr2);
+        this.SelectButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Select');
+        this.SelectButton.Click.Subscribe(this.SelectClick);
+        var hr3 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr3);
+        this.MoveButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Move');
+        this.MoveButton.Click.Subscribe(this.MoveClick);
         this.EditButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Edit');
         this.EditButton.Click.Subscribe(this.EditClick);
         this.RemoveButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Remove');
@@ -57333,6 +58720,7 @@ var PointAnnotationMode = /** @class */ (function () {
         this.Annotations.Changed.Subscribe(function (changed) { return _this.AnnotationsChanged(changed); });
         // Place the initial annotations.
         this.ResetAnnotations();
+        this.SetSelectedControls();
     }
     Object.defineProperty(PointAnnotationMode.prototype, "ID", {
         get: function () {
@@ -57348,12 +58736,73 @@ var PointAnnotationMode = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(PointAnnotationMode.prototype, "SelectedAnnotation", {
+        get: function () {
+            return this.zSelectedAnnotation;
+        },
+        set: function (value) {
+            this.zSelectedAnnotation = value;
+            this.SetSelectSelectedIndex();
+            this.SetSelectedControls();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    PointAnnotationMode.prototype.Dispose = function () {
+        this.DisconnectEvents();
+        this.SingularHtmlElement.remove();
+        this.PluralHtmlElement.remove();
+        this.AnnotationVisuals.forEach(function (visual) {
+            visual.Dispose();
+        });
+        this.AnnotationVisuals.splice(0);
+        this.zDisposed.Dispatch();
+    };
+    /**
+     * Set the index of the select dropdown based on what annotation has been selected via mouse.
+     */
+    PointAnnotationMode.prototype.SetSelectSelectedIndex = function () {
+        if (null === this.SelectedAnnotation) {
+            this.Select.selectedIndex = 0;
+            return;
+        }
+        for (var iOption = 0; iOption < this.Select.childNodes.length; iOption++) {
+            var option = this.Select.childNodes[iOption];
+            if (this.SelectedAnnotation.ID.toString() === option.value) {
+                this.Select.selectedIndex = iOption;
+                break;
+            }
+        }
+    };
+    PointAnnotationMode.prototype.SetSelectedControls = function () {
+        if (null === this.zSelectedAnnotation) {
+            this.DisableSelectedControls();
+        }
+        else {
+            this.EnableSelectedControls();
+        }
+    };
+    PointAnnotationMode.prototype.EnableSelectedControls = function () {
+        this.MoveButton.Enable();
+        this.EditButton.Enable();
+        this.RemoveButton.Enable();
+    };
+    PointAnnotationMode.prototype.DisableSelectedControls = function () {
+        this.MoveButton.Disable();
+        this.EditButton.Disable();
+        this.RemoveButton.Disable();
+    };
     PointAnnotationMode.prototype.FillSelect = function () {
         var _this = this;
         // Remove all children, if present.
         while (this.Select.firstChild) {
             this.Select.removeChild(this.Select.firstChild);
         }
+        // Add a first, default, none child.
+        var option = document.createElement('option');
+        this.Select.appendChild(option);
+        option.value = PointAnnotationMode.DummyAnnotationID.toString();
+        option.innerHTML = PointAnnotationMode.DummyAnnotationName;
         // Add children.
         this.Annotations.Values.forEach(function (value) {
             var option = document.createElement('option');
@@ -57361,6 +58810,19 @@ var PointAnnotationMode = /** @class */ (function () {
             option.value = value.ID.toString();
             option.innerHTML = value.Name;
         });
+        // Set the selected index to match the selected annotation.
+        if (null === this.SelectedAnnotation) {
+            this.Select.selectedIndex = 0;
+        }
+        else {
+            for (var iIndex = 0; iIndex < this.Select.childNodes.length; iIndex++) {
+                var option_1 = this.Select.childNodes[iIndex];
+                if (this.SelectedAnnotation.ID.toString() === option_1.value) {
+                    this.Select.selectedIndex = iIndex;
+                    break;
+                }
+            }
+        }
     };
     PointAnnotationMode.prototype.DisconnectEvents = function () {
         this.Annotations.Changed.Unsubscribe(this.AnnotationsChanged);
@@ -57368,10 +58830,10 @@ var PointAnnotationMode = /** @class */ (function () {
     PointAnnotationMode.prototype.AnnotationsChanged = function (changed) {
         switch (changed.Type) {
             case 'Added':
-                this.AddAnnotation(changed.Value);
+                this.AddAnnotationVisual(changed.Value);
                 break;
             case 'Inserted':
-                this.AddAnnotation(changed.Value);
+                this.AddAnnotationVisual(changed.Value);
                 break;
             case 'Removed':
                 this.RemoveAnnotation(changed.Value);
@@ -57386,7 +58848,7 @@ var PointAnnotationMode = /** @class */ (function () {
         // Update the select.
         this.FillSelect();
     };
-    PointAnnotationMode.prototype.AddAnnotation = function (annotation) {
+    PointAnnotationMode.prototype.AddAnnotationVisual = function (annotation) {
         var annotationVisual = new PointVisualsManager_1.PointVisualsManager(annotation);
         this.AnnotationVisuals.push(annotationVisual);
     };
@@ -57410,58 +58872,73 @@ var PointAnnotationMode = /** @class */ (function () {
         var values = this.Annotations.Values;
         for (var iAnnotation = 0; iAnnotation < values.length; iAnnotation++) {
             var annotation = values[iAnnotation];
-            this.AddAnnotation(annotation);
+            this.AddAnnotationVisual(annotation);
         }
     };
-    PointAnnotationMode.prototype.GetCategory = function () {
-        if (0 < this.EditorCategoryHtmlElement.childNodes.length) {
-            var option = this.EditorCategoryHtmlElement.childNodes[this.EditorCategoryHtmlElement.selectedIndex];
-            var IDStr = option.value;
-            var category = Application_1.Application.CategoryManager.GetCategoryByIDString(IDStr);
-            return category;
-        }
-        else {
-            return null;
-        }
+    PointAnnotationMode.prototype.SetupAddPointAnnotationMode = function () {
+        this.SelectButton.Disable();
+        Application_1.Application.TrackballController.Controls.enabled = false;
+        Application_1.Application.Theater.Renderer.domElement.addEventListener("mousedown", this.AddPointWebGLOutputMouseDown);
+        window.addEventListener('keydown', this.AddPointAnnotationModeKeyDown);
     };
-    PointAnnotationMode.prototype.SetUseCategoryVisuals = function () {
-        this.EditorCategoryHtmlElement.disabled = false;
-        this.EditorColorHtmlElement.style.pointerEvents = 'none';
-        this.EditorColorHtmlElement.style.opacity = '0.5';
-        this.EditorSizeHtmlElement.disabled = true;
-        this.EditorTransparencyHtmlElement.disabled = true;
+    PointAnnotationMode.prototype.TeardownAddPointAnnotationMode = function () {
+        this.SelectButton.Enable();
+        Application_1.Application.TrackballController.Controls.enabled = true;
+        Application_1.Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.AddPointWebGLOutputMouseDown);
+        window.removeEventListener('keydown', this.AddPointAnnotationModeKeyDown);
     };
-    PointAnnotationMode.prototype.SetUseAnnotationVisuals = function () {
-        this.EditorCategoryHtmlElement.disabled = true;
-        this.EditorColorHtmlElement.style.pointerEvents = 'auto';
-        this.EditorColorHtmlElement.style.opacity = '1';
-        this.EditorSizeHtmlElement.disabled = false;
-        this.EditorTransparencyHtmlElement.disabled = false;
+    PointAnnotationMode.prototype.AddAnnotation = function (preferredLocation) {
+        var standardLocation = CoordinateSystemConversion_1.CoordinateSystemConversion.ConvertPointPreferredToStandard(preferredLocation, Application_1.Application.PreferredCoordinateSystem.Value);
+        var standardLocationMy = new Vector3My_1.Vector3My();
+        standardLocationMy.FromVector3(standardLocation);
+        var ID = this.Annotations.GetNextID();
+        var annotation = new PointAnnotation_1.PointAnnotation(ID, 'Annotation ' + ID, undefined, undefined, undefined, standardLocationMy);
+        this.Annotations.Add(annotation); // Will add the visual automatically.
+        this.SelectedAnnotation = annotation;
+        this.FillSelect();
+        this.EditAnnotationInEditor(annotation);
     };
-    PointAnnotationMode.prototype.Dispose = function () {
-        this.DisconnectEvents();
-        this.SingularHtmlElement.remove();
-        this.PluralHtmlElement.remove();
-        this.AnnotationVisuals.forEach(function (visual) {
-            visual.Dispose();
-        });
-        this.AnnotationVisuals.splice(0);
-        this.zDisposed.Dispatch();
+    PointAnnotationMode.prototype.SetupSelectPointAnnotationMode = function () {
+        this.AddButton.Disable();
+        Application_1.Application.TrackballController.Controls.enabled = false;
+        Application_1.Application.Theater.Renderer.domElement.addEventListener("mousedown", this.SelectPointWebGLOutputMouseDown);
+        window.addEventListener('keydown', this.SelectPointAnnotationModeKeyDown);
+    };
+    PointAnnotationMode.prototype.TeardownSelectPointAnnotationMode = function () {
+        this.AddButton.Enable();
+        Application_1.Application.TrackballController.Controls.enabled = true;
+        Application_1.Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.SelectPointWebGLOutputMouseDown);
+        window.removeEventListener('keydown', this.SelectPointAnnotationModeKeyDown);
+    };
+    PointAnnotationMode.prototype.SetupMoveMode = function () {
+        this.AddButton.Disable();
+        this.SelectButton.Disable();
+        this.EditButton.Disable();
+        this.RemoveButton.Disable();
+        Application_1.Application.TrackballController.Controls.enabled = false;
+        Application_1.Application.Theater.Renderer.domElement.addEventListener("mousedown", this.MoveModeWebGLOutputMouseDown);
+        window.addEventListener('keydown', this.MoveModeKeyDown);
+    };
+    PointAnnotationMode.prototype.TeardownMoveMode = function () {
+        this.AddButton.Enable();
+        this.SelectButton.Enable();
+        this.EditButton.Enable();
+        this.RemoveButton.Enable();
+        Application_1.Application.TrackballController.Controls.enabled = true;
+        Application_1.Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.MoveModeWebGLOutputMouseDown);
+        window.removeEventListener('keydown', this.MoveModeKeyDown);
+    };
+    PointAnnotationMode.prototype.EditAnnotationInEditor = function (annotation) {
+        var instanceForEdit = annotation.Clone();
+        var editor = new PointAnnotationEditorBox_1.PointAnnotationEditorBox(instanceForEdit);
+        editor.Closed.SubscribeOnce(this.EditorClosed);
+        editor.Show();
     };
     PointAnnotationMode.ID = 'pointAnnotation';
     PointAnnotationMode.PluralHtmlElementID = 'PointAnnotations-Plural';
     PointAnnotationMode.SingularHtmlElementID = 'PointAnnotations-Singular';
-    PointAnnotationMode.EditorBodyHtmlElementID = 'PointAnnotations-EditorBody';
-    PointAnnotationMode.EditorNameHtmlElementID = 'PointAnnotations-EditorName';
-    PointAnnotationMode.EditorDescriptionHtmlElementID = 'PointAnnotations-EditorDescription';
-    PointAnnotationMode.EditorUseCategoryHtmlElementID = 'PointAnnotations-EditorUseCategory';
-    PointAnnotationMode.EditorCategoryHtmlElementID = 'PointAnnotations-EditorCategory';
-    PointAnnotationMode.EditorColorHtmlElementID = 'PointAnnotations-EditorColor';
-    PointAnnotationMode.EditorSizeHtmlElementID = 'PointAnnotations-EditorSize';
-    PointAnnotationMode.EditorTransparencyHtmlElementID = 'PointAnnotations-EditorTransparency';
-    PointAnnotationMode.EditorModelLocationHtmlElementID = 'PointAnnotations-EditorModelLocation';
-    PointAnnotationMode.EditorStandardLocationHtmlElementID = 'PointAnnotations-EditorStandardLocation';
-    PointAnnotationMode.EditorPointIDHtmlElementID = 'PointAnnotations-EditorPointID';
+    PointAnnotationMode.DummyAnnotationID = -1;
+    PointAnnotationMode.DummyAnnotationName = '- None -';
     return PointAnnotationMode;
 }());
 exports.PointAnnotationMode = PointAnnotationMode;
@@ -57846,6 +59323,355 @@ var SetPreferredCoordinateSystemMode = /** @class */ (function () {
     return SetPreferredCoordinateSystemMode;
 }());
 exports.SetPreferredCoordinateSystemMode = SetPreferredCoordinateSystemMode;
+
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SurfaceAnnotationMode.css":
+/*!************************************************!*\
+  !*** ./src/ts/Modes/SurfaceAnnotationMode.css ***!
+  \************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(/*! !../../../node_modules/css-loader!./SurfaceAnnotationMode.css */ "./node_modules/css-loader/index.js!./src/ts/Modes/SurfaceAnnotationMode.css");
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(/*! ../../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {}
+
+/***/ }),
+
+/***/ "./src/ts/Modes/SurfaceAnnotationMode.js":
+/*!***********************************************!*\
+  !*** ./src/ts/Modes/SurfaceAnnotationMode.js ***!
+  \***********************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var SignalEvent_1 = __webpack_require__(/*! ../Common/Events/SignalEvent */ "./src/ts/Common/Events/SignalEvent.js");
+var SurfaceAnnotation_1 = __webpack_require__(/*! ../Annotations/SurfaceAnnotation */ "./src/ts/Annotations/SurfaceAnnotation.js");
+var SurfaceAnnotationVisual_1 = __webpack_require__(/*! ../Annotations/SurfaceAnnotationVisual */ "./src/ts/Annotations/SurfaceAnnotationVisual.js");
+var ButtonControl_1 = __webpack_require__(/*! ../Controls/ButtonControl */ "./src/ts/Controls/ButtonControl.js");
+__webpack_require__(/*! ./SurfaceAnnotationMode.css */ "./src/ts/Modes/SurfaceAnnotationMode.css");
+var SurfaceSelectorFactory_1 = __webpack_require__(/*! ../Annotations/SurfaceSelectorFactory */ "./src/ts/Annotations/SurfaceSelectorFactory.js");
+var BoxSurfaceSelector_1 = __webpack_require__(/*! ../Annotations/BoxSurfaceSelector */ "./src/ts/Annotations/BoxSurfaceSelector.js");
+var SphereSurfaceSelector_1 = __webpack_require__(/*! ../Annotations/SphereSurfaceSelector */ "./src/ts/Annotations/SphereSurfaceSelector.js");
+var SurfaceSelectorVisualFactory_1 = __webpack_require__(/*! ../Annotations/SurfaceSelectorVisualFactory */ "./src/ts/Annotations/SurfaceSelectorVisualFactory.js");
+var IdentifiedManager_1 = __webpack_require__(/*! ../Common/IdentifiedManager */ "./src/ts/Common/IdentifiedManager.js");
+var LocalStorageManager_1 = __webpack_require__(/*! ../LocalStorageManager */ "./src/ts/LocalStorageManager.js");
+var SurfaceAnnotationMode = /** @class */ (function () {
+    function SurfaceAnnotationMode(controlPanel) {
+        var _this = this;
+        this.zDisposed = new SignalEvent_1.SignalEvent();
+        this.zSelectedAnnotation = null;
+        this.SurfaceSelectorFactory = new SurfaceSelectorFactory_1.SurfaceSelectorFactory();
+        this.Annotations = new IdentifiedManager_1.IdentifiedManager();
+        this.Visuals = new Array();
+        this.AnnotationsChangedHandler = function (changed) {
+            switch (changed.Type) {
+                case 'Added':
+                    _this.AddAnnotationVisual(changed.Value);
+                    break;
+                case 'Inserted':
+                    _this.AddAnnotationVisual(changed.Value);
+                    break;
+                case 'Removed':
+                    _this.RemoveAnnotationVisual(changed.Value);
+                    break;
+                case 'Reset':
+                    _this.ResetAnnotationVisuals();
+                    break;
+                default:
+                    // Do nothing.
+                    break;
+            }
+        };
+        this.LoadClick = function () {
+            var loaded = LocalStorageManager_1.LocalStorageManager.LoadSurfaceAnnotations();
+            _this.Annotations.Copy(loaded);
+            _this.FillAnnotationsSelect();
+        };
+        this.SaveClick = function () {
+            LocalStorageManager_1.LocalStorageManager.SaveSurfaceAnnotations(_this.Annotations);
+        };
+        this.FinishedClick = function () {
+            _this.Dispose();
+        };
+        this.AddClick = function () {
+            var id = _this.Annotations.GetNextID();
+            var name = "Annotation " + id;
+            var selector = _this.GetSelector();
+            var annotation = new SurfaceAnnotation_1.SurfaceAnnotation(selector, id, name);
+            _this.Annotations.Add(annotation); // Adding to the annotations list will setup the selected surface visual.
+            _this.SelectedAnnotation = annotation;
+            var selectorVisual = _this.SurfaceSelectorVisualFactory.Construct(annotation.Selector);
+            _this.FillAnnotationsSelect();
+        };
+        this.SelectOnChangeHandler = function () {
+            // Set the selected annotation to be the annotation whose name is selected.
+            var option = _this.Select.childNodes[_this.Select.selectedIndex];
+            var id = option.value;
+            if (id === SurfaceAnnotationMode.DefaultAnnotationID.toString()) {
+                _this.SelectedAnnotation = null;
+                return;
+            }
+            var values = _this.Annotations.Values;
+            for (var iElement = 0; iElement < values.length; iElement++) {
+                var annotation = _this.Annotations.Values[iElement];
+                if (id === annotation.ID.toString()) {
+                    _this.SelectedAnnotation = annotation;
+                    return;
+                }
+            }
+            console.error('No annotation found for selected option.');
+        };
+        this.SelectClick = function () {
+        };
+        this.PositionClick = function () {
+            var selectorVisual = _this.SurfaceSelectorVisualFactory.Construct(_this.SelectedAnnotation.Selector);
+        };
+        this.EditClick = function () {
+        };
+        this.HideClick = function () {
+            var visual = _this.GetVisualForAnnotation(_this.SelectedAnnotation);
+            visual.Hide();
+        };
+        this.ShowClick = function () {
+            var visual = _this.GetVisualForAnnotation(_this.SelectedAnnotation);
+            visual.Show();
+        };
+        this.RemoveClick = function () {
+            if (null !== _this.SelectedAnnotation) {
+                _this.Annotations.Remove(_this.SelectedAnnotation);
+                _this.SelectedAnnotation.Dispose();
+                _this.SelectedAnnotation = null;
+                _this.FillSelectorTypeSelect();
+            }
+        };
+        this.ControlPanel = controlPanel;
+        this.SurfaceSelectorVisualFactory = new SurfaceSelectorVisualFactory_1.SurfaceSelectorVisualFactory(this.ControlPanel);
+        this.CreateModeControls();
+        this.ConnectAnnotationsEvents();
+    }
+    Object.defineProperty(SurfaceAnnotationMode.prototype, "ID", {
+        get: function () {
+            return SurfaceAnnotationMode.ID;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotationMode.prototype, "Disposed", {
+        get: function () {
+            return this.zDisposed.AsEvent();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SurfaceAnnotationMode.prototype, "SelectedAnnotation", {
+        get: function () {
+            return this.zSelectedAnnotation;
+        },
+        set: function (v) {
+            this.zSelectedAnnotation = v;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SurfaceAnnotationMode.prototype.CreateModeControls = function () {
+        this.PluralHtmlElement = this.ControlPanel.CreateChildControlElement(SurfaceAnnotationMode.PluralHtmlElementID);
+        this.ControlPanel.CreateChildControlTitle(this.PluralHtmlElement, 'Surface Annotations');
+        this.LoadButton = new ButtonControl_1.ButtonControl(this.PluralHtmlElement, 'Load');
+        this.LoadButton.Click.Subscribe(this.LoadClick);
+        this.SaveButton = new ButtonControl_1.ButtonControl(this.PluralHtmlElement, 'Save');
+        this.SaveButton.Click.Subscribe(this.SaveClick);
+        this.FinishedButton = new ButtonControl_1.ButtonControl(this.PluralHtmlElement, 'Finished');
+        this.FinishedButton.Click.Subscribe(this.FinishedClick);
+        this.SingularHtmlElement = this.ControlPanel.CreateChildControlElement(SurfaceAnnotationMode.SingularHtmlElementID);
+        this.ControlPanel.CreateChildControlTitle(this.SingularHtmlElement, 'Surface Annotation');
+        var p = document.createElement('p');
+        this.SingularHtmlElement.appendChild(p);
+        p.innerHTML = 'Selector Type:';
+        this.SelectorTypeSelect = document.createElement('select');
+        this.SingularHtmlElement.appendChild(this.SelectorTypeSelect);
+        this.SelectorTypeSelect.id = SurfaceAnnotationMode.SelectorTypeSelectHtmlElementID;
+        this.FillSelectorTypeSelect();
+        this.AddButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Add');
+        this.AddButton.Click.Subscribe(this.AddClick);
+        var hr = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr);
+        this.Select = document.createElement('select');
+        this.SingularHtmlElement.appendChild(this.Select);
+        this.FillAnnotationsSelect();
+        this.Select.onchange = this.SelectOnChangeHandler;
+        var hr2 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr2);
+        this.SelectButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Select');
+        this.SelectButton.Click.Subscribe(this.SelectClick);
+        var hr3 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr3);
+        this.PositionButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Position');
+        this.PositionButton.Click.Subscribe(this.PositionClick);
+        this.EditButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Edit');
+        this.EditButton.Click.Subscribe(this.EditClick);
+        this.HideButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Hide');
+        this.HideButton.Click.Subscribe(this.HideClick);
+        this.ShowButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Show');
+        this.ShowButton.Click.Subscribe(this.ShowClick);
+        this.RemoveButton = new ButtonControl_1.ButtonControl(this.SingularHtmlElement, 'Remove');
+        this.RemoveButton.Click.Subscribe(this.RemoveClick);
+    };
+    SurfaceAnnotationMode.prototype.RemoveModeControls = function () {
+        this.SingularHtmlElement.remove();
+        this.PluralHtmlElement.remove();
+    };
+    SurfaceAnnotationMode.prototype.ConnectAnnotationsEvents = function () {
+        this.Annotations.Changed.Subscribe(this.AnnotationsChangedHandler);
+    };
+    SurfaceAnnotationMode.prototype.DisconnectAnnotationsEvents = function () {
+        this.Annotations.Changed.Unsubscribe(this.AnnotationsChangedHandler);
+    };
+    SurfaceAnnotationMode.prototype.Dispose = function () {
+        this.DisconnectAnnotationsEvents();
+        // Clear the visuals.
+        this.Visuals.forEach(function (visual) {
+            visual.Dispose();
+        });
+        this.Visuals.splice(0);
+        // Clear the annotations.
+        var annotations = this.Annotations.Values;
+        annotations.forEach(function (annotation) {
+            annotation.Dispose();
+        });
+        this.Annotations.Clear();
+        this.RemoveModeControls();
+        this.zDisposed.Dispatch();
+    };
+    SurfaceAnnotationMode.prototype.FillSelectorTypeSelect = function () {
+        var _this = this;
+        var selectorTypeInfos = [
+            {
+                Item1: SphereSurfaceSelector_1.SphereSurfaceSelector.SurfaceSelectorTypeID,
+                Item2: 'Sphere',
+            },
+            {
+                Item1: BoxSurfaceSelector_1.BoxSurfaceSelector.SurfaceSelectorTypeID,
+                Item2: 'Box',
+            },
+        ];
+        selectorTypeInfos.forEach(function (info) {
+            var option = document.createElement('option');
+            _this.SelectorTypeSelect.appendChild(option);
+            option.value = info.Item1;
+            option.innerHTML = info.Item2;
+        });
+    };
+    SurfaceAnnotationMode.prototype.AddAnnotationVisual = function (annotation) {
+        var visual = new SurfaceAnnotationVisual_1.SurfaceAnnotationVisual(annotation);
+        this.Visuals.push(visual);
+    };
+    SurfaceAnnotationMode.prototype.RemoveAnnotationVisual = function (annotation) {
+        for (var iVisual = 0; iVisual < this.Visuals.length; iVisual++) {
+            var visual = this.Visuals[iVisual];
+            if (visual.Annotation === annotation) {
+                this.Visuals.splice(iVisual, 1);
+                break;
+            }
+        }
+    };
+    SurfaceAnnotationMode.prototype.ResetAnnotationVisuals = function () {
+        var _this = this;
+        this.Visuals.splice(0);
+        this.Annotations.Values.forEach(function (annotation) {
+            _this.AddAnnotationVisual(annotation);
+        });
+    };
+    SurfaceAnnotationMode.prototype.GetSelector = function () {
+        var option = this.SelectorTypeSelect.childNodes[this.SelectorTypeSelect.selectedIndex];
+        var surfaceSelectorTypeID = option.value;
+        var selector = this.SurfaceSelectorFactory.Construct(surfaceSelectorTypeID);
+        return selector;
+    };
+    SurfaceAnnotationMode.prototype.FillAnnotationsSelect = function () {
+        var _this = this;
+        var annotations = this.Annotations.Values;
+        annotations.sort(function (a, b) {
+            if (a.Name === b.Name) {
+                return 0;
+            }
+            if (a.Name > b.Name) {
+                return 1;
+            }
+            else {
+                return -1;
+            }
+        });
+        // Remove all child options.
+        while (this.Select.firstChild) {
+            this.Select.removeChild(this.Select.firstChild);
+        }
+        // Add the default none option.
+        var option = document.createElement('option');
+        this.Select.appendChild(option);
+        option.value = SurfaceAnnotationMode.DefaultAnnotationID.toString();
+        option.innerHTML = SurfaceAnnotationMode.DefaultAnnotationName;
+        // Add the options foreach annotation.
+        annotations.forEach(function (annotation) {
+            var option = document.createElement('option');
+            _this.Select.appendChild(option);
+            option.value = annotation.ID.toString();
+            option.innerHTML = annotation.Name;
+        });
+        // Set the selected index to match the selected annotation.
+        if (null !== this.zSelectedAnnotation) {
+            for (var iElement = 0; iElement < annotations.length; iElement++) {
+                var annotation = annotations[iElement];
+                if (this.zSelectedAnnotation.ID === annotation.ID) {
+                    this.Select.selectedIndex = iElement;
+                    break;
+                }
+            }
+        }
+    };
+    /**
+     * If a visual is not found for the annotation, returns null.
+     */
+    SurfaceAnnotationMode.prototype.GetVisualForAnnotation = function (annotation) {
+        for (var iVisual = 0; iVisual < this.Visuals.length; iVisual++) {
+            var visual = this.Visuals[iVisual];
+            if (visual.Annotation === annotation) {
+                return visual;
+            }
+        }
+        return null;
+    };
+    SurfaceAnnotationMode.ID = 'surfaceAnnotation';
+    SurfaceAnnotationMode.PluralHtmlElementID = 'SurfaceAnnotations-Plural';
+    SurfaceAnnotationMode.SingularHtmlElementID = 'SurfaceAnnotations-Singular';
+    SurfaceAnnotationMode.SelectorTypeSelectHtmlElementID = 'SurfaceAnnotations-SelectorTypeSelect';
+    SurfaceAnnotationMode.DefaultAnnotationID = -1;
+    SurfaceAnnotationMode.DefaultAnnotationName = '- None -';
+    return SurfaceAnnotationMode;
+}());
+exports.SurfaceAnnotationMode = SurfaceAnnotationMode;
 
 
 /***/ }),

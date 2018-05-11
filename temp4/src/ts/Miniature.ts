@@ -90,10 +90,15 @@ export class Miniature {
 
         this.Geometry.computeBoundingBox();
 
+        // // For debugging.
+        // this.AddCopyAtInitialLocation();
+
         loadingFinishedHandler();
+    }
 
-        // this.ComputeScaleAndOffset();
-
-        // this.PositionObject();
+    private AddCopyAtInitialLocation(): void {
+        let meshCopy = this.Object.children[0].clone();
+        meshCopy.visible = false;
+        Application.Theater.Scene.add(meshCopy);
     }
 }

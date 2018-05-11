@@ -9,6 +9,9 @@ export interface ISubscribable<THandlerTyper> {
     SubscribeOnce(handler: THandlerTyper): UnsubscribeAction;
     IsSubscribed(handler: THandlerTyper): boolean;
     Unsubscribe(handler: THandlerTyper): void;
+    /**
+     * Unsubscribe all subscribers.
+     */
     Clear(): void;
 }
 

@@ -15,7 +15,10 @@ export class PointVisualsManager {
     private Visuals: VisualSpecification = null;
     private Geometry: SphereGeometry;
     private Material: MeshBasicMaterial;
-    private Mesh: Mesh;
+    private zMesh: Mesh;
+    public get Mesh(): Mesh {
+        return this.zMesh;
+    }
 
 
     public constructor(pointAnnotation: PointAnnotation) {
@@ -25,9 +28,9 @@ export class PointVisualsManager {
         this.Geometry = new SphereGeometry(1);
         this.Material = new MeshBasicMaterial({ color: 0x0000ff });
         this.Material.transparent = true; // This allows the opacity to be controlled.
-        this.Mesh = new Mesh(this.Geometry, this.Material);
-        Application.PointMeshes.Add(this.Mesh);
-        Application.Theater.Scene.add(this.Mesh);
+        this.zMesh = new Mesh(this.Geometry, this.Material);
+        Application.PointMeshes.Add(this.zMesh);
+        Application.Theater.Scene.add(this.zMesh);
 
         // Listen for updates to the point annotation.
         this.zPointAnnotation.CategoryChanged.Subscribe(this.CategoryChangedHandler);
@@ -42,7 +45,7 @@ export class PointVisualsManager {
         this.zPointAnnotation.CategoryChanged.Unsubscribe(this.CategoryChangedHandler);
         this.zPointAnnotation.StandardLocationChanged.Unsubscribe(this.StandardLocationChangedHandler);
 
-        Application.Theater.Scene.remove(this.Mesh);
+        Application.Theater.Scene.remove(this.zMesh);
         this.Geometry.dispose(); // From: https://github.com/mrdoob/three.js/blob/master/examples/webgl_test_memory.html
         this.Material.dispose();
     }
@@ -59,7 +62,7 @@ export class PointVisualsManager {
         // Position the visual mesh.
         let standardPosition = this.zPointAnnotation.StandardLocation.ToVector3();
         let preferredPosition = CoordinateSystemConversion.ConvertPointStandardToPreferred(standardPosition, Application.PreferredCoordinateSystem.Value);
-        this.Mesh.position.copy(preferredPosition);
+        this.zMesh.position.copy(preferredPosition);
     }
 
     /**
@@ -89,7 +92,7 @@ export class PointVisualsManager {
         this.Material.color.r = this.Visuals.Color.R;
         this.Material.color.g = this.Visuals.Color.G;
         this.Material.color.b = this.Visuals.Color.B;
-        this.Mesh.scale.set(this.Visuals.Size, this.Visuals.Size, this.Visuals.Size);
+        this.zMesh.scale.set(this.Visuals.Size, this.Visuals.Size, this.Visuals.Size);
         this.Material.opacity = this.Visuals.Transparency;
     }
 }

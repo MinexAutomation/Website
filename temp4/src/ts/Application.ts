@@ -31,6 +31,7 @@ import { EventedArray } from "./Common/EventedArray";
 import { PointVisualsManager } from "./Classes/PointVisualsManager";
 import { Vector3My } from "./Classes/Vectors/Vector3My";
 import { EventTester } from "./Common/Events/EventTester";
+import { SurfaceAnnotationMode } from "./Modes/SurfaceAnnotationMode";
 
 
 export class Application {
@@ -84,8 +85,11 @@ export class Application {
         Application.Theater.Axes.position.set(0, 0, 0);
         Application.Theater.Axes.rotation.set(0, 0, 0);
 
-        Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
-        Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
+        // Not sure I want to remove this yet.
+        // Application.Miniature.Mesh.position.copy(Application.PreferredCoordinateSystem.Value.Translation);
+        // Application.Miniature.Object.rotation.setFromVector3(Application.PreferredCoordinateSystem.Value.Rotation);
+
+        Application.Miniature.Mesh.applyMatrix(Application.PreferredCoordinateSystem.Value.GetTransformationMatrix());
     }
 
     private static MiniatureLoadingProgressHandler = (ev: ProgressEvent) => {
@@ -184,7 +188,7 @@ export class Application {
 
         // TEMP: Start in a specific mode.
         tour.AddStep(() => {
-            Application.ModesControl.SetCurrentModeByID(PointAnnotationMode.ID);
+            Application.ModesControl.SetCurrentModeByID(SurfaceAnnotationMode.ID);
 
             // No next step.
         });

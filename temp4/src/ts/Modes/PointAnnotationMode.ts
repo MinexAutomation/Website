@@ -1,6 +1,3 @@
-import * as wDatGui from "dat.gui";
-const dat = (<any>wDatGui).default; // Workaround.
-
 import { Application } from "../Application";
 import { ButtonControl } from "../Controls/ButtonControl";
 import { ControlPanel } from "../Controls/ControlPanel";
@@ -9,33 +6,24 @@ import { SignalEvent, ISignalEvent } from "../Common/Events/SignalEvent";
 import { EventedArrayChanged } from "../Common/EventedArray";
 import { PointAnnotation } from "../Annotations/PointAnnotation";
 import { LocalStorageManager } from "../LocalStorageManager";
-import { EditorBox, EditorBoxResult } from "../Common/Boxes/EditorBox";
 
-import * as template from "./PointAnnotationMode.html";
-import "./PointAnnotationMode.css";
 import { CoordinateSystemConversion } from "../CoordinateSystemConversion";
-import { Vector3, InstancedBufferAttribute } from "three";
+import { Vector3, InstancedBufferAttribute, Raycaster, error, EditorControls } from "three";
 import { Vector3My } from "../Classes/Vectors/Vector3My";
 import { PointVisualsManager } from "../Classes/PointVisualsManager";
 import { Category } from "../Annotations/Category";
 import { VisualSpecification } from "../Classes/VisualSpecification";
+import { PointAnnotationEditorBox } from "../Annotations/PointAnnotationEditorBox";
+import { EditorBoxResult } from "../Common/Boxes/EditorBox";
+import { SimpleEvent } from "../Common/Events/SimpleEvent";
 
 
 export class PointAnnotationMode implements IMode {
     public static readonly ID: string = 'pointAnnotation';
-    public static readonly PluralHtmlElementID = 'PointAnnotations-Plural';
-    public static readonly SingularHtmlElementID = 'PointAnnotations-Singular';
-    public static readonly EditorBodyHtmlElementID = 'PointAnnotations-EditorBody';
-    public static readonly EditorNameHtmlElementID = 'PointAnnotations-EditorName';
-    public static readonly EditorDescriptionHtmlElementID = 'PointAnnotations-EditorDescription';
-    public static readonly EditorUseCategoryHtmlElementID = 'PointAnnotations-EditorUseCategory';
-    public static readonly EditorCategoryHtmlElementID = 'PointAnnotations-EditorCategory';
-    public static readonly EditorColorHtmlElementID = 'PointAnnotations-EditorColor';
-    public static readonly EditorSizeHtmlElementID = 'PointAnnotations-EditorSize';
-    public static readonly EditorTransparencyHtmlElementID = 'PointAnnotations-EditorTransparency';
-    public static readonly EditorModelLocationHtmlElementID = 'PointAnnotations-EditorModelLocation';
-    public static readonly EditorStandardLocationHtmlElementID = 'PointAnnotations-EditorStandardLocation';
-    public static readonly EditorPointIDHtmlElementID = 'PointAnnotations-EditorPointID';
+    public static readonly PluralHtmlElementID: string = 'PointAnnotations-Plural';
+    public static readonly SingularHtmlElementID: string = 'PointAnnotations-Singular';
+    public static readonly DummyAnnotationID: number = -1;
+    public static readonly DummyAnnotationName: string = '- None -';
 
 
     public get ID(): string {
@@ -47,28 +35,27 @@ export class PointAnnotationMode implements IMode {
     }
     private Annotations = Application.PointAnnotationsManager;
     private AnnotationVisuals = new Array<PointVisualsManager>();
+    private zSelectedAnnotation: PointAnnotation = null;
+    public get SelectedAnnotation(): PointAnnotation {
+        return this.zSelectedAnnotation;
+    }
+    public set SelectedAnnotation(value: PointAnnotation) {
+        this.zSelectedAnnotation = value;
+
+        this.SetSelectSelectedIndex();
+        this.SetSelectedControls();
+    }
     private readonly PluralHtmlElement: HTMLElement
     private readonly LoadButton: ButtonControl;
     private readonly SaveButton: ButtonControl;
     private readonly FinishedButton: ButtonControl;
     private readonly SingularHtmlElement: HTMLElement;
-    private readonly Select: HTMLSelectElement;
     private readonly AddButton: ButtonControl;
-    private readonly RemoveButton: ButtonControl;
+    private readonly Select: HTMLSelectElement;
+    private readonly SelectButton: ButtonControl;
+    private readonly MoveButton: ButtonControl;
     private readonly EditButton: ButtonControl;
-    private Editor: EditorBox<PointAnnotation>;
-    private EditorVisualsDatGUI: wDatGui.GUI;
-
-    private EditorNameHtmlElement: HTMLInputElement;
-    private EditorDescriptionHtmlElement: HTMLInputElement;
-    private EditorUseCategoryHtmlElement: HTMLInputElement;
-    private EditorCategoryHtmlElement: HTMLSelectElement;
-    private EditorColorHtmlElement: HTMLDivElement;
-    private EditorSizeHtmlElement: HTMLInputElement;
-    private EditorTransparencyHtmlElement: HTMLInputElement;
-    private EditorModelLocationHtmlElement: HTMLLabelElement;
-    private EditorStandardLocationHtmlElement: HTMLLabelElement;
-    private EditorPointIDHtmlElement: HTMLLabelElement;
+    private readonly RemoveButton: ButtonControl;
 
 
     public constructor(controlPanel: ControlPanel) {
@@ -90,12 +77,28 @@ export class PointAnnotationMode implements IMode {
 
         controlPanel.CreateChildControlTitle(this.SingularHtmlElement, 'Point Annotation');
 
+        this.AddButton = new ButtonControl(this.SingularHtmlElement, 'Add');
+        this.AddButton.Click.Subscribe(this.AddClick);
+
+        let hr = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr);
+
         this.Select = document.createElement('select');
         this.SingularHtmlElement.appendChild(this.Select);
         this.FillSelect();
+        this.Select.onchange = this.OnSelectChanged;
 
-        this.AddButton = new ButtonControl(this.SingularHtmlElement, 'Add');
-        this.AddButton.Click.Subscribe(this.AddClick);
+        let hr2 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr2);
+
+        this.SelectButton = new ButtonControl(this.SingularHtmlElement, 'Select');
+        this.SelectButton.Click.Subscribe(this.SelectClick);
+
+        let hr3 = document.createElement('hr');
+        this.SingularHtmlElement.appendChild(hr3);
+
+        this.MoveButton = new ButtonControl(this.SingularHtmlElement, 'Move');
+        this.MoveButton.Click.Subscribe(this.MoveClick);
 
         this.EditButton = new ButtonControl(this.SingularHtmlElement, 'Edit');
         this.EditButton.Click.Subscribe(this.EditClick);
@@ -108,6 +111,83 @@ export class PointAnnotationMode implements IMode {
 
         // Place the initial annotations.
         this.ResetAnnotations();
+
+        this.SetSelectedControls();
+    }
+
+    public Dispose(): void {
+        this.DisconnectEvents();
+
+        this.SingularHtmlElement.remove();
+        this.PluralHtmlElement.remove();
+
+        this.AnnotationVisuals.forEach(visual => {
+            visual.Dispose();
+        });
+        this.AnnotationVisuals.splice(0);
+
+        this.zDisposed.Dispatch();
+    }
+
+    /**
+     * Set the index of the select dropdown based on what annotation has been selected via mouse.
+     */
+    private SetSelectSelectedIndex(): void {
+        if (null === this.SelectedAnnotation) {
+            this.Select.selectedIndex = 0;
+            return;
+        }
+
+        for (let iOption = 0; iOption < this.Select.childNodes.length; iOption++) {
+            const option = <HTMLOptionElement>this.Select.childNodes[iOption];
+            if (this.SelectedAnnotation.ID.toString() === option.value) {
+                this.Select.selectedIndex = iOption;
+                break;
+            }
+        }
+    }
+
+    private OnSelectChanged = () => {
+        // Get the selected option.
+        let option = <HTMLOptionElement>this.Select.childNodes[this.Select.selectedIndex];
+
+        // If we have selected the none option, set the selected annotation to null.
+        if (PointAnnotationMode.DummyAnnotationID.toString() === option.value) {
+            this.SelectedAnnotation = null;
+            return;
+        }
+
+        // Determine the point annotation from the ID.
+        let annotations = this.Annotations.Values;
+        for (let iAnnotation = 0; iAnnotation < annotations.length; iAnnotation++) {
+            const annotation = annotations[iAnnotation];
+            if (annotation.ID.toString() === option.value) {
+                this.SelectedAnnotation = annotation;
+                return;
+            }
+        }
+
+        console.error(`Annotation ${option.value}-${option.innerHTML} not found, but was selected via select dropdown.`);
+    }
+
+    private SetSelectedControls(): void {
+        if (null === this.zSelectedAnnotation) {
+            this.DisableSelectedControls();
+        } else {
+            this.EnableSelectedControls();
+        }
+    }
+
+    private EnableSelectedControls(): void {
+        this.MoveButton.Enable();
+        this.EditButton.Enable();
+        this.RemoveButton.Enable();
+    }
+
+    private DisableSelectedControls(): void {
+        this.MoveButton.Disable();
+        this.EditButton.Disable();
+        this.RemoveButton.Disable();
     }
 
     private FillSelect() {
@@ -116,6 +196,12 @@ export class PointAnnotationMode implements IMode {
             this.Select.removeChild(this.Select.firstChild);
         }
 
+        // Add a first, default, none child.
+        let option = document.createElement('option');
+        this.Select.appendChild(option);
+        option.value = PointAnnotationMode.DummyAnnotationID.toString();
+        option.innerHTML = PointAnnotationMode.DummyAnnotationName;
+
         // Add children.
         this.Annotations.Values.forEach(value => {
             let option = document.createElement('option');
@@ -123,6 +209,19 @@ export class PointAnnotationMode implements IMode {
             option.value = value.ID.toString();
             option.innerHTML = value.Name;
         });
+
+        // Set the selected index to match the selected annotation.
+        if (null === this.SelectedAnnotation) {
+            this.Select.selectedIndex = 0;
+        } else {
+            for (let iIndex = 0; iIndex < this.Select.childNodes.length; iIndex++) {
+                const option = <HTMLOptionElement>this.Select.childNodes[iIndex];
+                if (this.SelectedAnnotation.ID.toString() === option.value) {
+                    this.Select.selectedIndex = iIndex;
+                    break;
+                }
+            }
+        }
     }
 
     private DisconnectEvents(): void {
@@ -132,11 +231,11 @@ export class PointAnnotationMode implements IMode {
     private AnnotationsChanged(changed: EventedArrayChanged<PointAnnotation>) {
         switch (changed.Type) {
             case 'Added':
-                this.AddAnnotation(changed.Value);
+                this.AddAnnotationVisual(changed.Value);
                 break;
 
             case 'Inserted':
-                this.AddAnnotation(changed.Value);
+                this.AddAnnotationVisual(changed.Value);
                 break;
 
             case 'Removed':
@@ -156,7 +255,7 @@ export class PointAnnotationMode implements IMode {
         this.FillSelect();
     }
 
-    private AddAnnotation(annotation: PointAnnotation): void {
+    private AddAnnotationVisual(annotation: PointAnnotation): void {
         let annotationVisual = new PointVisualsManager(annotation);
         this.AnnotationVisuals.push(annotationVisual);
     }
@@ -183,7 +282,7 @@ export class PointAnnotationMode implements IMode {
         let values = this.Annotations.Values;
         for (let iAnnotation = 0; iAnnotation < values.length; iAnnotation++) {
             const annotation = values[iAnnotation];
-            this.AddAnnotation(annotation);
+            this.AddAnnotationVisual(annotation);
         }
     }
 
@@ -204,198 +303,269 @@ export class PointAnnotationMode implements IMode {
     }
 
     private AddClick = () => {
-        // Application.Theater.Renderer.domElement.addEventListener("mousedown", (ev: MouseEvent) => this.OnWebGlOutputMouseDown(ev));
-        Application.Theater.Renderer.domElement.addEventListener("mousedown", this.OnWebGlOutputMouseDown);
-
-        let ID = this.Annotations.GetNextID();
-        let annotation = new PointAnnotation(ID, 'Annotation ' + ID);
-        this.Annotations.Add(annotation);
-
-        this.FillSelect();
+        this.SetupAddPointAnnotationMode();
     }
 
-    private OnWebGlOutputMouseDown = (ev: MouseEvent) => {
+    private SetupAddPointAnnotationMode(): void {
+        this.SelectButton.Disable();
 
+        Application.TrackballController.Controls.enabled = false;
+        Application.Theater.Renderer.domElement.addEventListener("mousedown", this.AddPointWebGLOutputMouseDown);
+
+        window.addEventListener('keydown', this.AddPointAnnotationModeKeyDown);
+    }
+
+    private TeardownAddPointAnnotationMode(): void {
+        this.SelectButton.Enable();
+
+        Application.TrackballController.Controls.enabled = true;
+        Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.AddPointWebGLOutputMouseDown);
+
+        window.removeEventListener('keydown', this.AddPointAnnotationModeKeyDown);
+    }
+
+    private AddPointAnnotationModeKeyDown = (event: KeyboardEvent) => {
+        switch (event.keyCode) {
+            case 27: // Escape
+                this.TeardownAddPointAnnotationMode();
+                break;
+        }
+    }
+
+    private AddPointWebGLOutputMouseDown = (event: MouseEvent) => {
+        let camera = Application.Theater.Camera;
+        let scene = Application.Theater.Scene;
+
+        let vector = new Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+        vector = vector.unproject(camera);
+
+        let raycaster = new Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+        // Were any already added points hit?
+        let meshes = Application.PointMeshes.Values;
+        let pointIntersects = raycaster.intersectObjects(meshes);
+        if (pointIntersects.length > 0) {
+            console.log('You hit an already existing point!');
+        } else {
+            console.log('No points hit.');
+
+            // Add a point if we clicked anywhere on the miniature.
+            let miniatureIntersects = raycaster.intersectObjects(Application.Miniature.Object.children);
+            if (0 < miniatureIntersects.length) {
+                console.log('You hit the miniature.')
+
+                let firstIntersect = miniatureIntersects[0];
+                this.AddAnnotation(firstIntersect.point);
+
+                this.TeardownAddPointAnnotationMode();
+            } else {
+                console.log('Miniature not hit.')
+            }
+        }
+    }
+
+    private AddAnnotation(preferredLocation: Vector3) {
+        let standardLocation = CoordinateSystemConversion.ConvertPointPreferredToStandard(preferredLocation, Application.PreferredCoordinateSystem.Value);
+        let standardLocationMy = new Vector3My();
+        standardLocationMy.FromVector3(standardLocation);
+
+        let ID = this.Annotations.GetNextID();
+        let annotation = new PointAnnotation(ID, 'Annotation ' + ID, undefined, undefined, undefined, standardLocationMy);
+        this.Annotations.Add(annotation); // Will add the visual automatically.
+
+        this.SelectedAnnotation = annotation;
+
+        this.FillSelect();
+
+        this.EditAnnotationInEditor(annotation);
+    }
+
+    private SelectClick = () => {
+        this.SetupSelectPointAnnotationMode();
+    }
+
+    private SetupSelectPointAnnotationMode(): void {
+        this.AddButton.Disable();
+
+        Application.TrackballController.Controls.enabled = false;
+        Application.Theater.Renderer.domElement.addEventListener("mousedown", this.SelectPointWebGLOutputMouseDown);
+
+        window.addEventListener('keydown', this.SelectPointAnnotationModeKeyDown);
+    }
+
+    private TeardownSelectPointAnnotationMode(): void {
+        this.AddButton.Enable();
+
+        Application.TrackballController.Controls.enabled = true;
+        Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.SelectPointWebGLOutputMouseDown);
+
+        window.removeEventListener('keydown', this.SelectPointAnnotationModeKeyDown);
+    }
+
+    private SelectPointAnnotationModeKeyDown = (event: KeyboardEvent) => {
+        switch (event.keyCode) {
+            case 27: // Escape
+                this.TeardownSelectPointAnnotationMode();
+                break;
+        }
+    }
+
+    private SelectPointWebGLOutputMouseDown = (event: MouseEvent) => {
+        let camera = Application.Theater.Camera;
+        let scene = Application.Theater.Scene;
+
+        let vector = new Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+        vector = vector.unproject(camera);
+
+        let raycaster = new Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+        // Were any already added points hit?
+        let meshes = Application.PointMeshes.Values;
+        let pointIntersects = raycaster.intersectObjects(meshes);
+        if (pointIntersects.length > 0) {
+            console.log('You hit an already existing point!');
+
+            let firstIntersect = pointIntersects[0];
+            let selectedObject = firstIntersect.object;
+
+            // Get the annotation for the mesh, by first finding the PointVisualsManager for the selected mesh, then finding the PointAnnotation for the visuals.
+            let selectedAnnotationVisual: PointVisualsManager = null;
+            for (let iVisual = 0; iVisual < this.AnnotationVisuals.length; iVisual++) {
+                const visual = this.AnnotationVisuals[iVisual];
+                if (visual.Mesh === selectedObject) {
+                    selectedAnnotationVisual = visual;
+                    break;
+                }
+            }
+            if (null === selectedAnnotationVisual) {
+                console.error('Unable to find point annotation visual for selected object.');
+            }
+
+            let annotations = this.Annotations.Values;
+            let selectedAnnotation: PointAnnotation = null;
+            for (let iAnnotation = 0; iAnnotation < annotations.length; iAnnotation++) {
+                const annotation = annotations[iAnnotation];
+                if (annotation === selectedAnnotationVisual.PointAnnotation) {
+                    selectedAnnotation = annotation;
+                    break;
+                }
+            }
+            if (null === selectedAnnotation) {
+                console.error('Unable to find point annotation for selected point annotation visual.');
+            }
+
+            this.SelectedAnnotation = selectedAnnotation;
+
+            this.TeardownSelectPointAnnotationMode();
+        } else {
+            console.log('No points hit.');
+        }
+    }
+
+    private MoveClick = () => {
+        this.SetupMoveMode();
+    }
+
+    private SetupMoveMode(): void {
+        this.AddButton.Disable();
+        this.SelectButton.Disable();
+        this.EditButton.Disable();
+        this.RemoveButton.Disable();
+
+        Application.TrackballController.Controls.enabled = false;
+        Application.Theater.Renderer.domElement.addEventListener("mousedown", this.MoveModeWebGLOutputMouseDown);
+
+        window.addEventListener('keydown', this.MoveModeKeyDown);
+    }
+
+    private TeardownMoveMode(): void {
+        this.AddButton.Enable();
+        this.SelectButton.Enable();
+        this.EditButton.Enable();
+        this.RemoveButton.Enable();
+
+        Application.TrackballController.Controls.enabled = true;
+        Application.Theater.Renderer.domElement.removeEventListener("mousedown", this.MoveModeWebGLOutputMouseDown);
+
+        window.removeEventListener('keydown', this.MoveModeKeyDown);
+    }
+
+    private MoveModeKeyDown = (event: KeyboardEvent) => {
+        switch (event.keyCode) {
+            case 27: // Escape
+                this.TeardownMoveMode();
+                break;
+        }
+    }
+
+    private MoveModeWebGLOutputMouseDown = (event: MouseEvent) => {
+        let camera = Application.Theater.Camera;
+        let scene = Application.Theater.Scene;
+
+        let vector = new Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+        vector = vector.unproject(camera);
+
+        let raycaster = new Raycaster(camera.position, vector.sub(camera.position).normalize());
+
+        // Were any already added points hit?
+        let meshes = Application.PointMeshes.Values;
+        let pointIntersects = raycaster.intersectObjects(meshes);
+        if (pointIntersects.length > 0) {
+            console.log('You hit an already existing point!');
+        } else {
+            console.log('No points hit.');
+
+            // Add a point if we clicked anywhere on the miniature.
+            let miniatureIntersects = raycaster.intersectObjects(Application.Miniature.Object.children);
+            if (0 < miniatureIntersects.length) {
+                console.log('You hit the miniature.')
+
+                let firstIntersect = miniatureIntersects[0];
+
+                let preferredLocation = firstIntersect.point;
+                let standardLocation = CoordinateSystemConversion.ConvertPointPreferredToStandard(preferredLocation, Application.PreferredCoordinateSystem.Value);
+                this.SelectedAnnotation.StandardLocation.FromVector3(standardLocation); // Visual location will update via events.
+
+                this.TeardownMoveMode();
+            } else {
+                console.log('Miniature not hit.')
+            }
+        }
     }
 
     private EditClick = () => {
         let option = <HTMLOptionElement>this.Select.children[this.Select.selectedIndex];
         let annotation = this.Annotations.GetByIDString(option.value);
 
+        this.EditAnnotationInEditor(annotation);
+    }
+
+    private EditAnnotationInEditor(annotation: PointAnnotation): void {
         let instanceForEdit = annotation.Clone();
 
-        let editor = new EditorBox<PointAnnotation>(instanceForEdit, 'Edit Point Annotation');
-        this.Editor = editor;
+        let editor = new PointAnnotationEditorBox(instanceForEdit);
         editor.Closed.SubscribeOnce(this.EditorClosed);
-
-        let editorBody = editor.BodyHtmlElement;
-
-        let body = document.createElement('div');
-        editorBody.appendChild(body);
-        body.id = PointAnnotationMode.EditorBodyHtmlElementID;
-
-        body.innerHTML += template;
-
-        this.EditorNameHtmlElement = <HTMLInputElement>document.getElementById(PointAnnotationMode.EditorNameHtmlElementID);
-        this.EditorDescriptionHtmlElement = <HTMLInputElement>document.getElementById(PointAnnotationMode.EditorDescriptionHtmlElementID);
-        this.EditorUseCategoryHtmlElement = <HTMLInputElement>document.getElementById(PointAnnotationMode.EditorUseCategoryHtmlElementID);
-        this.EditorCategoryHtmlElement = <HTMLSelectElement>document.getElementById(PointAnnotationMode.EditorCategoryHtmlElementID);
-        this.EditorColorHtmlElement = <HTMLDivElement>document.getElementById(PointAnnotationMode.EditorColorHtmlElementID);
-        this.EditorSizeHtmlElement = <HTMLInputElement>document.getElementById(PointAnnotationMode.EditorSizeHtmlElementID);
-        this.EditorTransparencyHtmlElement = <HTMLInputElement>document.getElementById(PointAnnotationMode.EditorTransparencyHtmlElementID);
-        this.EditorModelLocationHtmlElement = <HTMLLabelElement>document.getElementById(PointAnnotationMode.EditorModelLocationHtmlElementID);
-        this.EditorStandardLocationHtmlElement = <HTMLLabelElement>document.getElementById(PointAnnotationMode.EditorStandardLocationHtmlElementID);
-        this.EditorPointIDHtmlElement = <HTMLLabelElement>document.getElementById(PointAnnotationMode.EditorPointIDHtmlElementID);
-
-        // Start off with the category disabled.
-        this.EditorCategoryHtmlElement.disabled = true;
-
-        // All the categories into the select.
-        let categories = Application.CategoryManager.Categories;
-        categories.forEach(category => {
-            let option = <HTMLOptionElement>document.createElement('option');
-            option.value = category.ID.toString();
-            option.innerHTML = category.Name;
-            this.EditorCategoryHtmlElement.appendChild(option);
-        }, this);
-
-        // If the point annotation has a category, determine its index, and set the selected index. Note: makes use of the same ordering as categories were added above.
-        if (null !== instanceForEdit.Category) {
-            for (let iCategory = 0; iCategory < categories.length; iCategory++) {
-                const category = categories[iCategory];
-                if (category === instanceForEdit.Category) {
-                    this.EditorCategoryHtmlElement.selectedIndex = iCategory;
-                    break;
-                }
-            }
-        }
-
-        // The visuals color picker.
-        this.EditorVisualsDatGUI = new dat.GUI({ autoPlace: false });
-        this.EditorColorHtmlElement.appendChild(this.EditorVisualsDatGUI.domElement);
-
-        let r = editor.Instance.Visuals.Color.R * 255;
-        let g = editor.Instance.Visuals.Color.G * 255;
-        let b = editor.Instance.Visuals.Color.B * 255;
-
-        let tempObj = { ColorValue: [r, g, b], };
-        let color = this.EditorVisualsDatGUI.addColor(tempObj, 'ColorValue');
-        color.onChange(() => {
-            editor.Instance.Visuals.Color.Set(tempObj.ColorValue[0] / 255, tempObj.ColorValue[1] / 255, tempObj.ColorValue[2] / 255);
-        });
-
-        // Set form values.
-        this.EditorNameHtmlElement.value = instanceForEdit.Name;
-        this.EditorDescriptionHtmlElement.value = instanceForEdit.Description;
-        let useCategory = null !== instanceForEdit.Category;
-        this.EditorUseCategoryHtmlElement.checked = useCategory;
-        if (useCategory) {
-            this.SetUseCategoryVisuals();
-        } else {
-            this.SetUseAnnotationVisuals();
-        }
-        this.EditorSizeHtmlElement.value = instanceForEdit.Visuals.Size.toString();
-        this.EditorTransparencyHtmlElement.value = instanceForEdit.Visuals.Transparency.toString();
-        this.EditorStandardLocationHtmlElement.innerHTML = instanceForEdit.StandardLocation.ToString();
-
-        let standardLocation = instanceForEdit.StandardLocation.ToVector3();
-        let preferredLocation = CoordinateSystemConversion.ConvertPointStandardToPreferred(standardLocation, Application.PreferredCoordinateSystem.Value);
-        let pref = new Vector3My();
-        pref.FromVector3(preferredLocation);
-        this.EditorModelLocationHtmlElement.innerHTML = pref.ToString();
-
-        this.EditorPointIDHtmlElement.innerHTML = instanceForEdit.ID.toString();
-
-        // Update temporary instance in response to form changes.
-        this.EditorNameHtmlElement.onchange = () => {
-            this.Editor.Instance.Name = this.EditorNameHtmlElement.value;
-        }
-        this.EditorDescriptionHtmlElement.onchange = () => {
-            this.Editor.Instance.Description = this.EditorDescriptionHtmlElement.value;
-        }
-        this.EditorUseCategoryHtmlElement.onchange = () => {
-            if (this.EditorUseCategoryHtmlElement.checked) {
-                this.SetUseCategoryVisuals();
-                this.Editor.Instance.Category = this.GetCategory(); // Set the category initially.
-            } else {
-                this.SetUseAnnotationVisuals();
-                this.Editor.Instance.Category = null;
-            }
-        }
-        this.EditorCategoryHtmlElement.onchange = () => {
-            this.Editor.Instance.Category = this.GetCategory();
-        }
-        this.EditorSizeHtmlElement.onchange = () => {
-            this.Editor.Instance.Visuals.Size = parseFloat(this.EditorSizeHtmlElement.value);
-        }
-        this.EditorTransparencyHtmlElement.onchange = () => {
-            this.Editor.Instance.Visuals.Transparency = parseFloat(this.EditorTransparencyHtmlElement.value);
-        }
 
         editor.Show();
     }
 
-    private GetCategory(): Category {
-        if (0 < this.EditorCategoryHtmlElement.childNodes.length) {
-            let option = <HTMLOptionElement>this.EditorCategoryHtmlElement.childNodes[this.EditorCategoryHtmlElement.selectedIndex];
-            let IDStr = option.value;
-            let category = Application.CategoryManager.GetCategoryByIDString(IDStr);
-            return category;
-        } else {
-            return null;
+    private RemoveClick = () => {
+        let option = <HTMLOptionElement>this.Select.children[this.Select.selectedIndex];
+
+        if (option.value !== PointAnnotationMode.DummyAnnotationID.toString()) {
+            let annotation = this.Annotations.GetByIDString(option.value);
+            this.Annotations.Remove(annotation);
+
+            this.FillSelect();
         }
     }
 
-    private SetUseCategoryVisuals(): void {
-        this.EditorCategoryHtmlElement.disabled = false;
-
-        this.EditorColorHtmlElement.style.pointerEvents = 'none';
-        this.EditorColorHtmlElement.style.opacity = '0.5';
-
-        this.EditorSizeHtmlElement.disabled = true;
-        this.EditorTransparencyHtmlElement.disabled = true;
-    }
-
-    private SetUseAnnotationVisuals(): void {
-        this.EditorCategoryHtmlElement.disabled = true;
-
-        this.EditorColorHtmlElement.style.pointerEvents = 'auto';
-        this.EditorColorHtmlElement.style.opacity = '1';
-
-        this.EditorSizeHtmlElement.disabled = false;
-        this.EditorTransparencyHtmlElement.disabled = false;
-    }
-    
     private EditorClosed = (result: EditorBoxResult<PointAnnotation>) => {
         if (result.Action === 'Accept') {
             let annotation = this.Annotations.GetByID(result.Instance.ID);
             annotation.Copy(result.Instance);
         }
 
-        this.EditorVisualsDatGUI.destroy();
-
         this.FillSelect();
-    }
-
-    private RemoveClick = () => {
-        let option = <HTMLOptionElement>this.Select.children[this.Select.selectedIndex];
-        let annotation = this.Annotations.GetByIDString(option.value);
-        this.Annotations.Remove(annotation);
-
-        this.FillSelect();
-    }
-
-    public Dispose(): void {
-        this.DisconnectEvents();
-
-        this.SingularHtmlElement.remove();
-        this.PluralHtmlElement.remove();
-
-        this.AnnotationVisuals.forEach(visual => {
-            visual.Dispose();
-        });
-        this.AnnotationVisuals.splice(0);
-
-        this.zDisposed.Dispatch();
     }
 }
